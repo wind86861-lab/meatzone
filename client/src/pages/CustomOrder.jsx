@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useLanguage } from '../context/LanguageContext'
-import { faqsAPI, productsAPI, requestsAPI, uploadAPI } from '../services/api'
+import { faqsAPI, productsAPI, requestsAPI, uploadAPI, pageContentAPI } from '../services/api'
 import { Link } from 'react-router-dom'
-import { Heart, Upload, ChevronDown, X, CheckCircle } from 'lucide-react'
+import { Heart, Upload, ChevronDown, X, CheckCircle, Package, Users, CreditCard, Target, Shield, Globe, Wrench, Zap } from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
+
+const ICON_MAP = {
+  Package, Handshake: Users, CreditCard, Target, Shield, Globe, Wrench, Zap
+}
 import product1 from '../image/Top mahsulotlar1.png'
 import product2 from '../image/Top mahsulotlar2.png'
 import product3 from '../image/Top mahsulotlar3.png'
@@ -16,12 +20,19 @@ export default function CustomOrder() {
   const [faqs, setFaqs] = useState([])
   const [topProducts, setTopProducts] = useState([])
 
+  const [content, setContent] = useState({})
+
   useEffect(() => {
     faqsAPI.getAll({ active: 'true' }).then(res => setFaqs(res.data || [])).catch(() => { })
     productsAPI.getAll({ active: 'true', limit: 20 }).then(res => {
       const all = res.data?.products || []
       const shuffled = all.sort(() => Math.random() - 0.5).slice(0, 4)
       setTopProducts(shuffled)
+    }).catch(() => { })
+    pageContentAPI.getAll({ page: 'customOrder' }).then(res => {
+      const map = {}
+        ; (res.data || []).forEach(item => { map[item.section] = item.content || {} })
+      setContent(map)
     }).catch(() => { })
   }, [])
 
@@ -65,26 +76,26 @@ export default function CustomOrder() {
   }
 
 
-  const benefits = [
+  const benefits = content.benefits?.items || [
     {
-      icon: '📦',
-      title: { uz: 'Tezkor Yetqazib IMPORT', ru: 'Быстрая доставка ИМПОРТ', en: 'Fast IMPORT Delivery' },
+      icon: 'Package',
+      title: { uz: 'Tezkor To\'g\'ri IMPORT', ru: 'Быстрая доставка ИМПОРТ', en: 'Fast IMPORT Delivery' },
       desc: { uz: 'Bizdan buyurtma qilgan mahsulotlaringizni tez orada yetqazib beramiz', ru: 'Мы быстро доставим заказанные товары', en: 'We will deliver your ordered products quickly' }
     },
     {
-      icon: '🤝',
+      icon: 'Handshake',
       title: { uz: 'Maxsus Buyurtma Xizmati', ru: 'Услуга специального заказа', en: 'Custom Order Service' },
       desc: { uz: 'Sizga kerakli mahsulotni topib beramiz va yetqazib beramiz', ru: 'Найдем и доставим нужный товар', en: 'We will find and deliver the product you need' }
     },
     {
-      icon: '💰',
-      title: { uz: 'Pr. Qizil Hamkorlik', ru: 'Пр. Красное партнерство', en: 'Pr. Red Partnership' },
-      desc: { uz: 'Hamkorlik qilish uchun maxsus shartlar', ru: 'Специальные условия для партнерства', en: 'Special terms for partnership' }
+      icon: 'CreditCard',
+      title: { uz: 'Qulay To\'lov Shartlari', ru: 'Выгодные условия оплаты', en: 'Flexible Payment Terms' },
+      desc: { uz: 'Hamkorlik qilish uchun maxsus shartlar va qulay to\'lov usullari', ru: 'Специальные условия для партнерства и удобные способы оплаты', en: 'Special terms for partnership and convenient payment methods' }
     },
     {
-      icon: '🎯',
-      title: { uz: 'Pr. Qizil Hamkorlik', ru: 'Пр. Красное партнерство', en: 'Pr. Red Partnership' },
-      desc: { uz: 'Professional xizmat va maslahat', ru: 'Профессиональное обслуживание и консультация', en: 'Professional service and consultation' }
+      icon: 'Target',
+      title: { uz: 'Professional Xizmat', ru: 'Профессиональное обслуживание', en: 'Professional Service' },
+      desc: { uz: 'Professional xizmat va mutaxassislarimizdan maslahat', ru: 'Профессиональное обслуживание и консультация наших специалистов', en: 'Professional service and consultation' }
     }
   ]
 
@@ -253,16 +264,21 @@ export default function CustomOrder() {
             {language === 'ru' && 'ГЛОБАЛЬНОЕ ПАРТНЕРСТВО, ГАРАНТИРОВАННОЕ КАЧЕСТВО И ПРОФЕССИОНАЛЬНЫЕ ПОСТАВКИ'}
             {language === 'en' && 'GLOBAL PARTNERSHIP, GUARANTEED QUALITY AND PROFESSIONAL SUPPLY'}
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            {benefits.map((benefit, index) => (
-              <div key={index} className="bg-white rounded-xl p-8 shadow-sm">
-                <div className="w-16 h-16 bg-[#3563e9] rounded-full flex items-center justify-center text-3xl mb-4">
-                  {benefit.icon}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {benefits.map((benefit, index) => {
+              const IconComp = ICON_MAP[benefit.icon] || Package
+              const title = benefit.title?.[language] || benefit.title?.uz || ''
+              const desc = benefit.desc?.[language] || benefit.desc?.uz || ''
+              return (
+                <div key={index} className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <div className="w-16 h-16 bg-[#3563e9]/10 rounded-full flex items-center justify-center text-[#3563e9] mb-6">
+                    <IconComp size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#1e3d69] mb-2">{title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{desc}</p>
                 </div>
-                <h3 className="text-xl font-bold text-[#1e3d69] mb-2">{benefit.title[language]}</h3>
-                <p className="text-gray-600">{benefit.desc[language]}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
