@@ -205,7 +205,7 @@ export default function Home() {
           <p className="text-white text-sm md:text-lg mb-8 md:mb-16 opacity-90">
             {advantages.subtitle?.[language] || advantages.subtitle?.uz || 'Nega mijozlar aynan bizni tanlaydi?'}
           </p>
-          <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 md:gap-6" style={{ gridTemplateColumns: `repeat(${Math.min((advantageItems.length || 5), 5)}, minmax(0, 1fr))` }}>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8">
             {(advantageItems.length > 0 ? advantageItems : [
               { title: { uz: '20+', ru: '20+', en: '20+' }, subtitle: { uz: 'Yil tajriba', ru: 'Лет опыта', en: 'Years experience' } },
               { title: { uz: '5000+', ru: '5000+', en: '5000+' }, subtitle: { uz: 'Ehtiyot qismlar', ru: 'Запчастей', en: 'Spare parts' } },
@@ -216,10 +216,10 @@ export default function Home() {
               const title = typeof item.title === 'object' ? (item.title[language] || item.title.uz || '') : item.title
               const subtitle = typeof item.subtitle === 'object' ? (item.subtitle[language] || item.subtitle.uz || '') : item.subtitle
               return (
-                <div key={index} className="text-center">
-                  <div className="w-[100px] h-[100px] sm:w-[130px] sm:h-[130px] md:w-[150px] md:h-[150px] lg:w-[180px] lg:h-[180px] border-4 border-white/30 rounded-full mx-auto mb-3 md:mb-6 flex flex-col items-center justify-center">
-                    <h4 className="text-white text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1">{title}</h4>
-                    <p className="text-white text-xs md:text-sm px-2 md:px-4">{subtitle}</p>
+                <div key={index} className="text-center group">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 lg:w-40 lg:h-40 xl:w-44 xl:h-44 border-4 border-white/30 rounded-full mx-auto mb-3 md:mb-6 flex flex-col items-center justify-center group-hover:border-white/60 transition-colors">
+                    <h4 className="text-white text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-1 line-clamp-1">{title}</h4>
+                    <p className="text-white text-[10px] sm:text-xs md:text-sm px-2 md:px-4 opacity-90">{subtitle}</p>
                   </div>
                 </div>
               )

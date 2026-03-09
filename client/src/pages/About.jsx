@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Package, Users, CreditCard, Target } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
@@ -121,13 +122,13 @@ export default function About() {
             {c('globalSection', 'title2', language) || (language === 'uz' ? 'PROFESSIONAL TAMINOT' : language === 'ru' ? 'ПРОФЕССИОНАЛЬНЫЕ ПОСТАВКИ' : 'PROFESSIONAL SUPPLY')}
           </h2>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            <div className="bg-white rounded-xl p-6 text-center shadow-sm">
-              <div className="w-16 h-16 bg-[#3563e9] rounded-full flex items-center justify-center mx-auto mb-4 text-white text-2xl">
-                📦
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="w-16 h-16 bg-[#3563e9]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[#3563e9]">
+                <Package size={32} />
               </div>
               <h3 className="font-bold text-[#1e3d69] mb-2">
-                {language === 'uz' && 'Tezkor Teg\'ri IMPORT'}
+                {language === 'uz' && "Tezkor To'g'ri IMPORT"}
                 {language === 'ru' && 'Быстрая Доставка ИМПОРТ'}
                 {language === 'en' && 'Fast IMPORT Delivery'}
               </h3>
@@ -138,9 +139,9 @@ export default function About() {
               </p>
             </div>
 
-            <div className="bg-white rounded-xl p-6 text-center shadow-sm">
-              <div className="w-16 h-16 bg-[#3563e9] rounded-full flex items-center justify-center mx-auto mb-4 text-white text-2xl">
-                🤝
+            <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="w-16 h-16 bg-[#3563e9]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[#3563e9]">
+                <Users size={32} />
               </div>
               <h3 className="font-bold text-[#1e3d69] mb-2">
                 {language === 'uz' && 'Maxsus Buyurtma Xizmati'}
@@ -154,53 +155,41 @@ export default function About() {
               </p>
             </div>
 
-            <div className="bg-white rounded-xl p-6 text-center shadow-sm">
-              <div className="w-16 h-16 bg-[#3563e9] rounded-full flex items-center justify-center mx-auto mb-4 text-white text-2xl">
-                💰
+            <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="w-16 h-16 bg-[#3563e9]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[#3563e9]">
+                <CreditCard size={32} />
               </div>
               <h3 className="font-bold text-[#1e3d69] mb-2">
-                {language === 'uz' && 'Pr. Qizil Hamkorlik'}
-                {language === 'ru' && 'Пр. Красное Партнерство'}
-                {language === 'en' && 'Pr. Red Partnership'}
+                {language === 'uz' && 'Qulay To\'lov Shartlari'}
+                {language === 'ru' && 'Выгодные Условия Оплаты'}
+                {language === 'en' && 'Flexible Payment Terms'}
               </h3>
               <p className="text-sm text-gray-600">
-                {language === 'uz' && 'Hamkorlik uchun maxsus shartlar'}
-                {language === 'ru' && 'Специальные условия для партнерства'}
-                {language === 'en' && 'Special terms for partnership'}
+                {language === 'uz' && 'Hamkorlik uchun maxsus shartlar va qulay to\'lov usullari'}
+                {language === 'ru' && 'Специальные условия для партнерства и удобные способы оплаты'}
+                {language === 'en' && 'Special terms for partnership and convenient payment methods'}
               </p>
             </div>
 
-            <div className="bg-white rounded-xl p-6 text-center shadow-sm">
-              <div className="w-16 h-16 bg-[#3563e9] rounded-full flex items-center justify-center mx-auto mb-4 text-white text-2xl">
-                🎯
+            <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="w-16 h-16 bg-[#3563e9]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[#3563e9]">
+                <Target size={32} />
               </div>
               <h3 className="font-bold text-[#1e3d69] mb-2">
-                {language === 'uz' && 'Pr. Qizil Hamkorlik'}
-                {language === 'ru' && 'Пр. Красное Партнерство'}
-                {language === 'en' && 'Pr. Red Partnership'}
+                {language === 'uz' && 'Professional Xizmat'}
+                {language === 'ru' && 'Профессиональное Обслуживание'}
+                {language === 'en' && 'Professional Service'}
               </h3>
               <p className="text-sm text-gray-600">
-                {language === 'uz' && 'Professional xizmat va maslahat'}
-                {language === 'ru' && 'Профессиональное обслуживание'}
-                {language === 'en' && 'Professional service'}
+                {language === 'uz' && 'Mutaxassislarimiz tomonidan professional xizmat va maslahat'}
+                {language === 'ru' && 'Профессиональное обслуживание и консультации от наших специалистов'}
+                {language === 'en' && 'Professional service and consultation from our specialists'}
               </p>
             </div>
           </div>
         </div>
 
         <div className="bg-gradient-to-r from-[#1e3d69] to-[#2d5a8f] rounded-2xl p-6 md:p-12 mb-10 md:mb-16 relative overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-between gap-32 opacity-10 pointer-events-none" style={{ left: '-100px' }}>
-            <div className="text-[80px] font-bold text-white transform -rotate-12 whitespace-nowrap">PNEUMAX</div>
-            <div className="text-[80px] font-bold text-white transform -rotate-12 whitespace-nowrap">PNEUMAX</div>
-            <div className="text-[80px] font-bold text-white transform -rotate-12 whitespace-nowrap">PNEUMAX</div>
-            <div className="text-[80px] font-bold text-white transform -rotate-12 whitespace-nowrap">PNEUMAX</div>
-          </div>
-          <div className="absolute inset-0 flex items-center justify-between gap-32 opacity-10 pointer-events-none" style={{ marginTop: '100px', left: '-100px' }}>
-            <div className="text-[80px] font-bold text-white transform -rotate-12 whitespace-nowrap">PNEUMAX</div>
-            <div className="text-[80px] font-bold text-white transform -rotate-12 whitespace-nowrap">PNEUMAX</div>
-            <div className="text-[80px] font-bold text-white transform -rotate-12 whitespace-nowrap">PNEUMAX</div>
-            <div className="text-[80px] font-bold text-white transform -rotate-12 whitespace-nowrap">PNEUMAX</div>
-          </div>
           <div className="relative z-10">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
               {c('advantages', 'title', language) || (language === 'uz' ? 'Afzalliklar' : language === 'ru' ? 'Преимущества' : 'Advantages')}
@@ -208,79 +197,27 @@ export default function About() {
             <p className="text-white/80 mb-6 md:mb-12 text-sm md:text-base">
               {c('advantages', 'subtitle', language) || (language === 'uz' ? 'Nega mijozlar aynan bizni tanlaydi?' : language === 'ru' ? 'Почему клиенты выбирают именно нас?' : 'Why do customers choose us?')}
             </p>
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 text-center text-white">
-              <div>
-                <div className="w-20 h-20 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full border-4 border-white/30 flex items-center justify-center mx-auto mb-4">
-                  <div>
-                    <div className="text-xl md:text-3xl lg:text-4xl font-bold">20+</div>
-                    <div className="text-xs opacity-90">
-                      {language === 'uz' && 'Yil tajriba'}
-                      {language === 'ru' && 'Лет опыта'}
-                      {language === 'en' && 'Years'}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8 text-center text-white">
+              {(content.advantages?.items || [
+                { title: { uz: '20+', ru: '20+', en: '20+' }, subtitle: { uz: 'Yil tajriba', ru: 'Лет опыта', en: 'Years' } },
+                { title: { uz: '5000+', ru: '5000+', en: '5000+' }, subtitle: { uz: 'Ehtiyot qismlar', ru: 'Запчастей', en: 'Parts' } },
+                { title: { uz: 'Buyurtma', ru: 'Заказ', en: 'Order' }, subtitle: { uz: 'Moslashtirilgan', ru: 'Индивидуальный', en: 'Custom' } },
+                { title: { uz: 'Tez', ru: 'Быстро', en: 'Fast' }, subtitle: { uz: 'Yetkazib berish', ru: 'Доставка', en: 'Delivery' } },
+                { title: { uz: 'To\'lov', ru: 'Оплата', en: 'Payment' }, subtitle: { uz: 'Turli ixtiyoriy', ru: 'Разные способы', en: 'Various' } },
+              ]).map((item, index) => (
+                <div key={index}>
+                  <div className="w-20 h-20 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full border-4 border-white/30 flex items-center justify-center mx-auto mb-4 hover:border-white/60 transition-colors">
+                    <div>
+                      <div className="text-xl md:text-2xl lg:text-3xl font-bold">
+                        {item.title?.[language] || item.title?.uz || item.title || ''}
+                      </div>
+                      <div className="text-[10px] md:text-xs opacity-90">
+                        {item.subtitle?.[language] || item.subtitle?.uz || item.subtitle || ''}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div>
-                <div className="w-20 h-20 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full border-4 border-white/30 flex items-center justify-center mx-auto mb-4">
-                  <div>
-                    <div className="text-xl md:text-3xl lg:text-4xl font-bold">5000+</div>
-                    <div className="text-xs opacity-90">
-                      {language === 'uz' && 'Ehtiyot qismlar'}
-                      {language === 'ru' && 'Запчастей'}
-                      {language === 'en' && 'Parts'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="w-20 h-20 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full border-4 border-white/30 flex items-center justify-center mx-auto mb-4">
-                  <div>
-                    <div className="text-base md:text-2xl lg:text-3xl font-bold">
-                      {language === 'uz' && 'Buyurtma'}
-                      {language === 'ru' && 'Заказ'}
-                      {language === 'en' && 'Order'}
-                    </div>
-                    <div className="text-xs opacity-90">
-                      {language === 'uz' && 'Moslashtirilgan'}
-                      {language === 'ru' && 'Индивидуальный'}
-                      {language === 'en' && 'Custom'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="w-20 h-20 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full border-4 border-white/30 flex items-center justify-center mx-auto mb-4">
-                  <div>
-                    <div className="text-base md:text-2xl lg:text-3xl font-bold">
-                      {language === 'uz' && 'Tez'}
-                      {language === 'ru' && 'Быстро'}
-                      {language === 'en' && 'Fast'}
-                    </div>
-                    <div className="text-xs opacity-90">
-                      {language === 'uz' && 'Yetkazib berish'}
-                      {language === 'ru' && 'Доставка'}
-                      {language === 'en' && 'Delivery'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="w-20 h-20 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full border-4 border-white/30 flex items-center justify-center mx-auto mb-4">
-                  <div>
-                    <div className="text-base md:text-2xl lg:text-3xl font-bold">
-                      {language === 'uz' && 'To\'lov'}
-                      {language === 'ru' && 'Оплата'}
-                      {language === 'en' && 'Payment'}
-                    </div>
-                    <div className="text-xs opacity-90">
-                      {language === 'uz' && 'Turli ixtiyoriy'}
-                      {language === 'ru' && 'Разные способы'}
-                      {language === 'en' && 'Various'}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>

@@ -314,13 +314,15 @@ export default function AdminPages() {
     )
   }
 
-  const renderAdvantagesSection = () => {
-    const section = 'advantages'
+  const renderItemsSection = (section, itemLabel = 'Element') => {
     const data = contentMap[section] || {}
     const items = data.items || []
 
     const addItem = () => {
-      const newItems = [...items, { title: { uz: '', ru: '', en: '' }, subtitle: { uz: '', ru: '', en: '' } }]
+      const newItem = section === 'benefits'
+        ? { title: { uz: '', ru: '', en: '' }, desc: { uz: '', ru: '', en: '' }, icon: 'Package' }
+        : { title: { uz: '', ru: '', en: '' }, subtitle: { uz: '', ru: '', en: '' } }
+      const newItems = [...items, newItem]
       updateContent(section, { items: newItems })
     }
     const removeItem = (i) => {
@@ -332,6 +334,10 @@ export default function AdminPages() {
         const existing = typeof item[field] === 'object' ? item[field] : { uz: item[field] || '', ru: '', en: '' }
         return { ...item, [field]: { ...existing, [lang]: value } }
       })
+      updateContent(section, { items: newItems })
+    }
+    const updateItemVal = (i, field, value) => {
+      const newItems = items.map((item, idx) => idx === i ? { ...item, [field]: value } : item)
       updateContent(section, { items: newItems })
     }
     const getItemLangVal = (item, field, lang) => {
@@ -346,26 +352,41 @@ export default function AdminPages() {
         <MultilangInput section={section} field="title" label="Sarlavha" />
         <MultilangInput section={section} field="subtitle" label="Qo'shimcha matn" />
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">Afzallik elementlari (doiralar)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">{itemLabel}lar ({items.length} ta)</label>
           <div className="space-y-3">
             {items.map((item, i) => (
               <div key={i} className="bg-gray-50 rounded-xl p-4 border border-gray-200 relative">
                 <button type="button" onClick={() => removeItem(i)} className="absolute top-2 right-2 p-1.5 hover:bg-red-50 rounded-lg text-red-500"><Trash2 size={14} /></button>
+                {section === 'benefits' && (
+                  <div className="mb-3">
+                    <label className="block text-xs text-gray-500 mb-1">Icon</label>
+                    <select value={item.icon || 'Package'} onChange={e => updateItemVal(i, 'icon', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                      <option value="Package">Package</option>
+                      <option value="Users">Users</option>
+                      <option value="CreditCard">CreditCard</option>
+                      <option value="Target">Target</option>
+                      <option value="Shield">Shield</option>
+                      <option value="Globe">Globe</option>
+                      <option value="Wrench">Wrench</option>
+                      <option value="Zap">Zap</option>
+                    </select>
+                  </div>
+                )}
                 <div className="mb-3">
                   <label className="block text-xs text-gray-500 mb-2">Sarlavha (3 tilda)</label>
                   {['uz', 'ru', 'en'].map(lang => (
                     <div key={lang} className="flex items-center gap-2 mb-1">
                       <span className="text-xs text-gray-400 w-6 uppercase font-medium">{lang}</span>
-                      <input value={getItemLangVal(item, 'title', lang)} onChange={e => updateItemLang(i, 'title', lang, e.target.value)} className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm" placeholder={lang === 'uz' ? '20+' : lang === 'ru' ? '20+' : '20+'} />
+                      <input value={getItemLangVal(item, 'title', lang)} onChange={e => updateItemLang(i, 'title', lang, e.target.value)} className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm" placeholder="Sarlavha" />
                     </div>
                   ))}
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-2">Tavsif (3 tilda)</label>
+                  <label className="block text-xs text-gray-500 mb-2">{section === 'benefits' ? 'Tavsif' : 'Tavsif/Subtitle'} (3 tilda)</label>
                   {['uz', 'ru', 'en'].map(lang => (
                     <div key={lang} className="flex items-center gap-2 mb-1">
                       <span className="text-xs text-gray-400 w-6 uppercase font-medium">{lang}</span>
-                      <input value={getItemLangVal(item, 'subtitle', lang)} onChange={e => updateItemLang(i, 'subtitle', lang, e.target.value)} className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm" placeholder={lang === 'uz' ? 'Yil tajriba' : lang === 'ru' ? 'Лет опыта' : 'Years experience'} />
+                      <input value={getItemLangVal(item, section === 'benefits' ? 'desc' : 'subtitle', lang)} onChange={e => updateItemLang(i, section === 'benefits' ? 'desc' : 'subtitle', lang, e.target.value)} className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm" placeholder="Tavsif" />
                     </div>
                   ))}
                 </div>
@@ -373,7 +394,7 @@ export default function AdminPages() {
             ))}
           </div>
           <button type="button" onClick={addItem} className="mt-3 flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
-            <Plus size={16} /> Element qo'shish
+            <Plus size={16} /> {itemLabel} qo'shish
           </button>
         </div>
         <SaveButton section={section} />
@@ -537,7 +558,7 @@ export default function AdminPages() {
     { key: 'hero', label: 'Hero bo\'limi (Bosh ekran)', render: renderHeroSection },
     { key: 'features', label: 'Xususiyatlar bo\'limi (4 ta karta)', render: renderFeaturesSection },
     { key: 'topProducts', label: 'Top mahsulotlar', render: renderTopProductsSection },
-    { key: 'advantages', label: 'Afzalliklar bo\'limi (doiralar)', render: renderAdvantagesSection },
+    { key: 'advantages', label: 'Afzalliklar bo\'limi (doiralar)', render: () => renderItemsSection('advantages', 'Afzallik') },
     { key: 'showcase', label: 'Mahsulot ko\'rgazmasi (rasmlar)', render: renderShowcaseSection },
     { key: 'branches', label: 'Filiallar bo\'limi', render: renderBranchesSection },
     { key: 'consultation', label: 'Maxsus buyurtma / Konsultatsiya', render: renderConsultationSection },
@@ -569,10 +590,7 @@ export default function AdminPages() {
         ]
       },
       {
-        section: 'advantages', label: 'Afzalliklar (PNEUMAX background)', fields: [
-          { key: 'title', type: 'multilang', label: 'Sarlavha' },
-          { key: 'subtitle', type: 'multilang', label: 'Qo\'shimcha matn' },
-        ]
+        section: 'advantages', label: 'Afzalliklar (PNEUMAX background)', render: () => renderItemsSection('advantages', 'Afzallik')
       },
     ],
     catalog: [
@@ -597,6 +615,9 @@ export default function AdminPages() {
           { key: 'title', type: 'multilang', label: 'Sarlavha' },
           { key: 'subtitle', type: 'multilang', label: 'Qo\'shimcha matn' },
         ]
+      },
+      {
+        section: 'benefits', label: 'Foydali jihatlar (Benefits)', render: () => renderItemsSection('benefits', 'Benefit')
       },
     ],
     blog: [
@@ -655,8 +676,8 @@ export default function AdminPages() {
         </div>
       ) : (
         <div className="space-y-3">
-          {(OTHER_PAGES[activePage] || []).map(({ section, label, fields }) =>
-            renderSectionBlock(section, label, () => renderGenericFields(section, fields))
+          {(OTHER_PAGES[activePage] || []).map(({ section, label, fields, render }) =>
+            renderSectionBlock(section, label, render ? render : () => renderGenericFields(section, fields))
           )}
         </div>
       )}

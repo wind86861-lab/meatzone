@@ -14,7 +14,15 @@ const isProd = process.env.NODE_ENV === 'production';
 const app = express();
 
 // Security headers
-app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "frame-src": ["'self'", "https://www.google.com"],
+    },
+  },
+}));
 
 // CORS – restrict to known origins in production
 const allowedOrigins = process.env.ALLOWED_ORIGINS
