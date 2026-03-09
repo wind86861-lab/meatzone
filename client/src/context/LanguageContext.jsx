@@ -21,7 +21,6 @@ export const LanguageProvider = ({ children }) => {
 
   const setLanguage = (lang) => {
     if (['uz', 'ru', 'en'].includes(lang)) {
-      console.log('Setting language to:', lang)
       localStorage.setItem('pneumax-language', lang)
       setLanguageState(lang)
     }
@@ -37,13 +36,8 @@ export const LanguageProvider = ({ children }) => {
 
   const toggleLanguage = () => {
     const next = language === 'uz' ? 'ru' : language === 'ru' ? 'en' : 'uz'
-    console.log('Toggling language from', language, 'to', next)
     setLanguage(next)
   }
-
-  useEffect(() => {
-    console.log('Current language:', language)
-  }, [language])
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t, toggleLanguage }}>
