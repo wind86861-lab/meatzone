@@ -82,25 +82,25 @@ export default function Header() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20">
           <ul className="hidden md:flex items-center gap-3 lg:gap-8 text-white overflow-x-auto">
             <li>
-              <Link to="/" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-sm lg:text-base whitespace-nowrap">{t.nav.home}</Link>
+              <Link to="/" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-base lg:text-lg whitespace-nowrap">{t.nav.home}</Link>
             </li>
             <li>
-              <Link to="/catalog" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-sm lg:text-base whitespace-nowrap">{t.nav.catalog}</Link>
+              <Link to="/catalog" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-base lg:text-lg whitespace-nowrap">{t.nav.catalog}</Link>
             </li>
             <li>
-              <Link to="/calculator" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-sm lg:text-base whitespace-nowrap">{t.nav.calculator}</Link>
+              <Link to="/calculator" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-base lg:text-lg whitespace-nowrap">{t.nav.calculator}</Link>
             </li>
             <li>
-              <Link to="/custom-order" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-sm lg:text-base whitespace-nowrap">{t.nav.customOrder}</Link>
+              <Link to="/custom-order" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-base lg:text-lg whitespace-nowrap">{t.nav.customOrder}</Link>
             </li>
             <li>
-              <Link to="/branches" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-sm lg:text-base whitespace-nowrap">{t.nav.branches}</Link>
+              <Link to="/branches" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-base lg:text-lg whitespace-nowrap">{t.nav.branches}</Link>
             </li>
             <li>
-              <Link to="/blog" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-sm lg:text-base whitespace-nowrap">{t.nav.blog}</Link>
+              <Link to="/blog" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-base lg:text-lg whitespace-nowrap">{t.nav.blog}</Link>
             </li>
             <li>
-              <Link to="/about" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-sm lg:text-base whitespace-nowrap">{t.nav.about}</Link>
+              <Link to="/about" className="block py-3 md:py-4 hover:text-[#42ade2] transition-colors font-medium text-base lg:text-lg whitespace-nowrap">{t.nav.about}</Link>
             </li>
           </ul>
         </div>
