@@ -47,14 +47,14 @@ export default function About() {
       <Header />
 
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20 py-6 md:py-12">
-        <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-[#1e3d69] mb-6 md:mb-12 uppercase">
+        <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-[#1e3d69] mb-6 md:mb-12 uppercase" data-aos="fade-down">
           {language === 'uz' && 'BIZ XAQIMIZDA'}
           {language === 'ru' && 'О НАС'}
           {language === 'en' && 'ABOUT US'}
         </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-10 md:mb-16">
-          <div className="space-y-6">
+          <div className="space-y-6" data-aos="fade-right">
             <div>
               <p className="text-gray-700 leading-relaxed mb-4">
                 <span className="font-bold text-[#1e3d69]">Pneumax</span>
@@ -74,7 +74,7 @@ export default function About() {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6" data-aos="fade-left">
             <div className="rounded-2xl h-[250px] md:h-[400px] overflow-hidden">
               {c('companyInfo', 'image')
                 ? <img src={c('companyInfo', 'image')} alt="Kompaniya" className="w-full h-full object-cover" />

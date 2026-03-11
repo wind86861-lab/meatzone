@@ -200,29 +200,33 @@ export default function Home() {
       </section>
 
       {/* ADVANTAGES */}
-      <section className="bg-gradient-to-r from-[#1e3d69] via-[#2d5a8f] to-[#1e3d69] py-10 md:py-16 lg:py-20 relative overflow-hidden">
+      <section className="bg-gradient-to-br from-[#1e3d69] via-[#2952d1] to-[#1e3d69] py-16 md:py-24 lg:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40"></div>
         <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20">
-          <h3 className="text-[24px] sm:text-[28px] md:text-[32px] lg:text-[36px] font-bold text-white mb-2 md:mb-3">
-            {advantages.title?.[language] || advantages.title?.uz || 'Afzalliklar'}
-          </h3>
-          <p className="text-white text-sm md:text-lg mb-8 md:mb-16 opacity-90">
-            {advantages.subtitle?.[language] || advantages.subtitle?.uz || 'Nega mijozlar aynan bizni tanlaydi?'}
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8">
+          <div className="text-center mb-12 md:mb-20" data-aos="fade-down">
+            <h3 className="text-[28px] sm:text-[36px] md:text-[44px] lg:text-[52px] font-black text-white mb-4">
+              {advantages.title?.[language] || advantages.title?.uz || 'Преимущества'}
+            </h3>
+            <p className="text-white/90 text-base md:text-xl max-w-2xl mx-auto">
+              {advantages.subtitle?.[language] || advantages.subtitle?.uz || 'Почему клиенты выбирают именно нас?'}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 md:gap-8">
             {(advantageItems.length > 0 ? advantageItems : [
-              { title: { uz: '20+', ru: '20+', en: '20+' }, subtitle: { uz: 'Yil tajriba', ru: 'Лет опыта', en: 'Years experience' } },
-              { title: { uz: '5000+', ru: '5000+', en: '5000+' }, subtitle: { uz: 'Ehtiyot qismlar', ru: 'Запчастей', en: 'Spare parts' } },
-              { title: { uz: 'Buyurtma', ru: 'Заказ', en: 'Order' }, subtitle: { uz: 'Moslashuvchan', ru: 'Гибкий', en: 'Flexible' } },
-              { title: { uz: 'Tez', ru: 'Быстро', en: 'Fast' }, subtitle: { uz: 'Yetkazib berish', ru: 'Доставка', en: 'Delivery' } },
-              { title: { uz: "To'lov", ru: 'Оплата', en: 'Payment' }, subtitle: { uz: 'Turi ixtiyoriy', ru: 'Любой способ', en: 'Any method' } },
+              { title: { uz: '20+', ru: '20+', en: '20+' }, subtitle: { uz: 'Yil tajriba', ru: 'Лет опыта', en: 'Years experience' }, icon: '🏆' },
+              { title: { uz: '5000+', ru: '5000+', en: '5000+' }, subtitle: { uz: 'Ehtiyot qismlar', ru: 'Запчастей', en: 'Spare parts' }, icon: '📦' },
+              { title: { uz: 'Buyurtma', ru: 'Заказ', en: 'Order' }, subtitle: { uz: 'Moslashuvchan', ru: 'Гибкий', en: 'Flexible' }, icon: '⚡' },
+              { title: { uz: 'Tez', ru: 'Быстро', en: 'Fast' }, subtitle: { uz: 'Yetkazib berish', ru: 'Доставка', en: 'Delivery' }, icon: '🚀' },
+              { title: { uz: "To'lov", ru: 'Оплата', en: 'Payment' }, subtitle: { uz: 'Turi ixtiyoriy', ru: 'Любой способ', en: 'Any method' }, icon: '💳' },
             ]).map((item, index) => {
               const title = typeof item.title === 'object' ? (item.title[language] || item.title.uz || '') : item.title
               const subtitle = typeof item.subtitle === 'object' ? (item.subtitle[language] || item.subtitle.uz || '') : item.subtitle
               return (
-                <div key={index} className="text-center group">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 lg:w-40 lg:h-40 xl:w-44 xl:h-44 border-4 border-white/30 rounded-full mx-auto mb-3 md:mb-6 flex flex-col items-center justify-center group-hover:border-white/60 transition-colors">
-                    <h4 className="text-white text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-1 line-clamp-1">{title}</h4>
-                    <p className="text-white text-[10px] sm:text-xs md:text-sm px-2 md:px-4 opacity-90">{subtitle}</p>
+                <div key={index} className="group" data-aos="fade-up" data-aos-delay={index * 100}>
+                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 md:p-8 text-center hover:bg-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl border border-white/20">
+                    <div className="text-5xl md:text-6xl mb-4">{item.icon || '✨'}</div>
+                    <h4 className="text-white text-2xl md:text-3xl lg:text-4xl font-black mb-2">{title}</h4>
+                    <p className="text-white/80 text-sm md:text-base font-medium">{subtitle}</p>
                   </div>
                 </div>
               )
@@ -232,7 +236,7 @@ export default function Home() {
       </section>
 
       {/* SHOWCASE */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto">
+      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto" data-aos="fade-up">
         <h3 className="text-[18px] sm:text-[22px] md:text-[26px] lg:text-[32px] font-bold text-[#1e3d69] mb-2 md:mb-4 uppercase">
           {showcase.title?.[language] || showcase.title?.uz || 'Ishonchli sanoat ehtiyot qismlari, qulay narxlarda va'}
         </h3>
@@ -244,7 +248,7 @@ export default function Home() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 mb-8 md:mb-12">
           {visibleShowcase.map((img, i) => (
-            <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-lg">
+            <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-lg" data-aos="zoom-in" data-aos-delay={i * 200}>
               <img src={img} alt="" className="w-full h-[300px] object-contain bg-white" />
             </div>
           ))}
@@ -260,13 +264,13 @@ export default function Home() {
 
       {/* BRANCHES */}
       {branches.length > 0 && (
-        <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-white">
+        <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-white" data-aos="fade-up">
           <h3 className="text-[22px] sm:text-[26px] md:text-[30px] lg:text-[36px] font-bold text-[#1e3d69] mb-6 md:mb-12 uppercase border-b-4 border-[#3563e9] inline-block pb-2">
             {branchesSection.title?.[language] || branchesSection.title?.uz || (language === 'uz' ? 'Filiallarimiz' : language === 'ru' ? 'Наши филиалы' : 'Our Branches')}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-12">
             {branches.map((branch) => (
-              <div key={branch._id} className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 col-span-1 sm:col-span-2">
+              <div key={branch._id} className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 col-span-1 sm:col-span-2" data-aos="fade-right">
                 <div className="rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow h-[250px] sm:h-[300px] lg:h-[350px]">
                   <div className="bg-gradient-to-br from-[#1e3d69] to-[#2d5a8f] p-6 md:p-10 text-white h-full flex flex-col justify-between">
                     <div>

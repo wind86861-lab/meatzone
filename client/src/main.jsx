@@ -10,11 +10,20 @@ import 'aos/dist/aos.css'
 function Root() {
   useEffect(() => {
     AOS.init({
-      duration: 800,
+      duration: 1000,
       once: false,
-      offset: 100,
-      easing: 'ease-in-out',
+      offset: 120,
+      easing: 'ease-out-cubic',
+      delay: 50,
+      anchorPlacement: 'top-bottom',
     })
+
+    // Refresh AOS on route changes
+    const handleRouteChange = () => {
+      setTimeout(() => AOS.refresh(), 100)
+    }
+    window.addEventListener('popstate', handleRouteChange)
+    return () => window.removeEventListener('popstate', handleRouteChange)
   }, [])
 
   return <App />
