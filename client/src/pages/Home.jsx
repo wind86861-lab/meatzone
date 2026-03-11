@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { MapPin, TrendingUp, Package, Truck, CreditCard, ChevronDown, Phone, Shield, Globe, Wrench, Zap } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import { faqsAPI, productsAPI, branchesAPI, blogsAPI, pageContentAPI, requestsAPI, uploadAPI } from '../services/api'
+import { formatPhoneNumber, isValidUzbekPhoneNumber } from '../utils/phoneValidation'
 import { Link } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
@@ -321,10 +322,7 @@ export default function Home() {
               <input
                 type="tel"
                 value={consultForm.phone}
-                onChange={e => {
-                  const val = e.target.value.replace(/[^0-9+]/g, '')
-                  setConsultForm(f => ({ ...f, phone: val }))
-                }}
+                onChange={e => setConsultForm({ ...consultForm, phone: formatPhoneNumber(e.target.value) })}
                 pattern="^(\+998[0-9]{9}|[0-9]{9})$"
                 placeholder="+998901234567"
                 title="Enter valid phone: +998XXXXXXXXX or XXXXXXXXX"

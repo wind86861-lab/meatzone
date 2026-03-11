@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import { ordersAPI } from '../services/api'
+import { formatPhoneNumber, isValidUzbekPhoneNumber } from '../utils/phoneValidation'
 
 export default function Cart() {
   const { language } = useLanguage()
@@ -30,6 +31,7 @@ export default function Cart() {
     commentPlaceholder: language === 'ru' ? 'Комментарий (необязательно)' : language === 'en' ? 'Comment (optional)' : 'Izoh (ixtiyoriy)',
     checkout: language === 'ru' ? 'Оформить заказ' : language === 'en' ? 'Checkout' : 'Buyurtmani rasmiylashtirish',
     phoneRequired: language === 'ru' ? 'Введите номер телефона' : language === 'en' ? 'Enter phone number' : 'Telefon raqamini kiriting',
+    phoneInvalid: language === 'ru' ? 'Неверный формат номера. Используйте: +998 XX XXX XX XX или XX XXX XX XX' : language === 'en' ? 'Invalid phone format. Use: +998 XX XXX XX XX or XX XXX XX XX' : 'Noto\'g\'ri format. Ishlatish: +998 XX XXX XX XX yoki XX XXX XX XX',
     successTitle: language === 'ru' ? 'Заказ оформлен!' : language === 'en' ? 'Order placed!' : 'Buyurtma qabul qilindi!',
     successDesc: language === 'ru' ? 'Мы свяжемся с вами в ближайшее время.' : language === 'en' ? 'We will contact you soon.' : 'Tez orada siz bilan bog\'lanamiz.',
     newOrder: language === 'ru' ? 'Оформить новый заказ' : language === 'en' ? 'New order' : 'Yangi buyurtma',
@@ -37,6 +39,7 @@ export default function Cart() {
 
   const handleCheckout = async () => {
     if (!customerPhone.trim()) { setError(t.phoneRequired); return }
+    if (!isValidUzbekPhoneNumber(customerPhone)) { setError(t.phoneInvalid); return }
     setError('')
     setSubmitting(true)
     try {
@@ -158,9 +161,10 @@ export default function Cart() {
                     <input
                       type="tel"
                       value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value)}
+                      onChange={(e) => setCustomerPhone(formatPhoneNumber(e.target.value))}
                       placeholder={t.phonePlaceholder}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#3563e9]"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3563e9] focus:border-transparent"
+                      required
                     />
                     <textarea
                       value={comment}
