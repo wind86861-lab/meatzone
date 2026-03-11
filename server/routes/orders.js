@@ -35,7 +35,9 @@ router.post('/', submitLimiter, async (req, res) => {
   try {
     const order = await Order.create(req.body);
     res.status(201).json(order);
-    sendTelegramMessage(formatOrderMessage(order)).catch(() => {});
+    sendTelegramMessage(formatOrderMessage(order)).catch((err) => {
+      console.error('Telegram notification error:', err.message);
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

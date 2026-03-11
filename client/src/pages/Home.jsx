@@ -123,7 +123,7 @@ export default function Home() {
       </section>
 
       {/* FEATURES */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-[#f5f7fa]">
+      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-[#f5f7fa]" data-aos="fade-up">
         <div className="max-w-[1200px] mx-auto">
           <h3 className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] font-bold text-[#1e3d69] text-center mb-2 md:mb-4 uppercase">
             {features.title?.[language] || features.title?.uz || 'GLOBAL HAMKORLIK, KAFOLATLANGAN SIFAT VA'}
@@ -142,7 +142,7 @@ export default function Home() {
               const title = typeof item.title === 'object' ? (item.title[language] || item.title.uz || '') : item.title
               const desc = typeof item.description === 'object' ? (item.description[language] || item.description.uz || '') : item.description
               return (
-                <div key={i} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow">
+                <div key={i} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-delay={i * 100}>
                   <div className="w-16 h-16 bg-[#7c8ff5] rounded-full flex items-center justify-center mb-6">
                     <IconComp size={32} className="text-white" />
                   </div>
@@ -156,13 +156,13 @@ export default function Home() {
       </section>
 
       {/* TOP PRODUCTS */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto">
+      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto" data-aos="fade-up">
         <h3 className="text-[20px] sm:text-[24px] md:text-[28px] lg:text-[32px] font-bold text-[#1e3d69] uppercase mb-6 md:mb-12">
           {topProductsSection.title?.[language] || topProductsSection.title?.uz || 'Top mahsulotlar'}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
           {topProducts.map((product) => (
-            <div key={product._id} className="bg-white border border-gray-200 rounded-xl p-3 md:p-5 hover:shadow-xl transition-all group flex flex-col">
+            <div key={product._id} className="bg-white border border-gray-200 rounded-xl p-3 md:p-5 hover:shadow-xl transition-all group flex flex-col" data-aos="zoom-in">
               <div className="bg-gray-50 h-32 sm:h-40 lg:h-48 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                 {product.images?.[0]
                   ? <img src={product.images[0]} alt={product.name?.ru || product.name?.uz} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />

@@ -275,7 +275,7 @@ export default function Catalog() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                 {products.map(product => (
-                  <div key={product._id} className="bg-white border border-gray-200 rounded-xl p-3 md:p-5 hover:shadow-xl transition-all group relative flex flex-col">
+                  <div key={product._id} className="bg-white border border-gray-200 rounded-xl p-3 md:p-5 hover:shadow-xl transition-all group relative flex flex-col" data-aos="fade-up">
                     <div className="bg-gray-50 h-32 sm:h-40 lg:h-48 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                       {product.images?.[0]
                         ? <img src={product.images[0]} alt={product.name?.ru || product.name?.uz} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
@@ -294,8 +294,8 @@ export default function Catalog() {
                           <button
                             onClick={() => handleAddToCart(product)}
                             className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg font-medium text-xs md:text-sm transition-all ${addedIds.has(product._id)
-                                ? 'bg-green-500 text-white'
-                                : 'bg-[#3563e9] text-white hover:bg-[#2952d1]'
+                              ? 'bg-green-500 text-white'
+                              : 'bg-[#3563e9] text-white hover:bg-[#2952d1]'
                               }`}
                           >
                             <ShoppingCart size={14} />

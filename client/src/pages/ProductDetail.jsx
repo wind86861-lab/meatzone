@@ -49,7 +49,7 @@ export default function ProductDetail() {
       <Header />
 
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20 py-6 md:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mb-10 md:mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mb-10 md:mb-16" data-aos="fade-up">
           {/* Left Side - Product Images */}
           <div className="flex gap-3 md:gap-4">
             <div className="flex flex-col gap-2 md:gap-4">
@@ -145,8 +145,8 @@ export default function ProductDetail() {
                     setTimeout(() => setAddedToCart(false), 2000)
                   }}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all ${addedToCart
-                      ? 'border-green-500 bg-green-50 text-green-600'
-                      : 'border-[#1e3d69] text-[#1e3d69] hover:bg-[#1e3d69] hover:text-white'
+                    ? 'border-green-500 bg-green-50 text-green-600'
+                    : 'border-[#1e3d69] text-[#1e3d69] hover:bg-[#1e3d69] hover:text-white'
                     }`}
                 >
                   {addedToCart
@@ -159,7 +159,7 @@ export default function ProductDetail() {
         </div>
 
         {/* Product Description */}
-        <div className="bg-white rounded-2xl p-8 mb-16">
+        <div className="bg-white rounded-2xl p-8 mb-16" data-aos="fade-up">
           <h2 className="text-2xl font-bold text-[#1e3d69] mb-4">
             {language === 'uz' ? 'Mahsulot tavsifi' : language === 'ru' ? 'Описание товара' : 'Product Description'}
           </h2>
@@ -177,7 +177,7 @@ export default function ProductDetail() {
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
             {similarProducts.map((sim) => (
-              <div key={sim._id} className="bg-white border border-gray-200 rounded-xl p-3 md:p-5 hover:shadow-xl transition-all group flex flex-col">
+              <div key={sim._id} className="bg-white border border-gray-200 rounded-xl p-3 md:p-5 hover:shadow-xl transition-all group flex flex-col" data-aos="zoom-in">
                 <div className="bg-gray-50 h-32 sm:h-40 lg:h-48 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                   {sim.images?.[0]
                     ? <img src={sim.images[0]} alt={sim.name?.[language]} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
