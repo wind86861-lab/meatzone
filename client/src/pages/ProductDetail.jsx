@@ -70,10 +70,14 @@ export default function ProductDetail() {
               {product.images?.[selectedImage]
                 ? <img src={product.images[selectedImage]} alt={product.name?.[language]} className="w-full h-auto object-contain" />
                 : <Package size={120} className="text-gray-200" />}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="text-white/20 text-5xl md:text-7xl lg:text-8xl font-black tracking-widest transform -rotate-12 select-none">
-                  PNEUMAX
-                </span>
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-8 transform -rotate-12 scale-150">
+                  {[...Array(20)].map((_, i) => (
+                    <span key={i} className="text-white/15 text-2xl md:text-3xl font-bold tracking-wider select-none whitespace-nowrap">
+                      PNEUMAX
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
