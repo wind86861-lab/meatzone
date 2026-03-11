@@ -107,7 +107,7 @@ export default function AdminPages() {
     input.onchange = async (e) => {
       const file = e.target.files[0]
       if (!file) return
-      if (file.size > 5 * 1024 * 1024) { alert(`Maksimum: 5MB`); return }
+      if (file.size > 10 * 1024 * 1024) { alert(`Maksimum: 10MB`); return }
       setUploading(true)
       try {
         const fd = new FormData()
@@ -127,7 +127,7 @@ export default function AdminPages() {
     input.onchange = async (e) => {
       const file = e.target.files[0]
       if (!file) return
-      if (file.size > 5 * 1024 * 1024) { alert('Maksimum: 5MB'); return }
+      if (file.size > 10 * 1024 * 1024) { alert('Maksimum: 10MB'); return }
       setUploading(true)
       try {
         const fd = new FormData()
@@ -447,7 +447,7 @@ export default function AdminPages() {
       input.onchange = async (e) => {
         const file = e.target.files[0]
         if (!file) return
-        if (file.size > 5 * 1024 * 1024) { alert('Maksimum: 5MB'); return }
+        if (file.size > 10 * 1024 * 1024) { alert('Maksimum: 10MB'); return }
         setUploading(true)
         try {
           const fd = new FormData()

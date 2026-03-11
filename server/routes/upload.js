@@ -34,7 +34,10 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+    fieldSize: 10 * 1024 * 1024,
+  },
 });
 
 router.post('/', upload.single('image'), (req, res) => {
@@ -43,6 +46,20 @@ router.post('/', upload.single('image'), (req, res) => {
   }
   const url = `/uploads/${req.file.filename}`;
   res.json({ url, filename: req.file.filename });
+});
+
+// Handle multer errors
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ message: 'File too large. Maximum size is 10MB' });
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ message: 'Too many files uploaded' });
+    }
+    return res.status(400).json({ message: 'Upload error: ' + error.message });
+  }
+  next(error);
 });
 
 router.post('/multiple', upload.array('images', 10), (req, res) => {

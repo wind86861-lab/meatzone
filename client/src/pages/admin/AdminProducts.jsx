@@ -107,9 +107,9 @@ export default function AdminProducts() {
     const file = e.target.files[0]
     if (!file) return
 
-    const maxSize = 5 * 1024 * 1024
+    const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
-      alert(`Image too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum: 5MB.\n\nTip: Use online tools like TinyPNG or Squoosh to compress images before uploading.`)
+      alert(`Image too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum: 10MB.\n\nTip: Use online tools like TinyPNG or Squoosh to compress images before uploading.`)
       return
     }
 

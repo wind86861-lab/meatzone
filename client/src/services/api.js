@@ -6,6 +6,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000, // 30 second timeout
 })
 
 api.interceptors.request.use((config) => {
@@ -130,9 +131,11 @@ export const pageContentAPI = {
 export const uploadAPI = {
   single: (formData) => api.post('/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000, // 60 second timeout for uploads
   }),
   multiple: (formData) => api.post('/upload/multiple', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000, // 60 second timeout for uploads
   }),
 }
 
