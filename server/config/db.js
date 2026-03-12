@@ -9,8 +9,12 @@ const connectWithRetry = async () => {
     attempt++;
     try {
       const conn = await mongoose.connect(process.env.MONGODB_URI, {
-        serverSelectionTimeoutMS: 5000,
-        heartbeatFrequencyMS: 5000,
+        serverSelectionTimeoutMS: 10000,
+        heartbeatFrequencyMS: 10000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000,
+        maxPoolSize: 10,
+        minPoolSize: 2,
       });
       console.log(`MongoDB Connected: ${conn.connection.host}`);
       return;

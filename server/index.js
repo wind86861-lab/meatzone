@@ -13,6 +13,17 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const app = express();
 
+// CRITICAL: trust nginx reverse proxy so express-rate-limit reads real IPs
+app.set('trust proxy', 1);
+
+// Global process-level guards — prevent Node.js crash on unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception — keeping process alive:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled Promise Rejection — keeping process alive:', reason);
+});
+
 // Security headers
 app.use(helmet({
   crossOriginResourcePolicy: false,
@@ -41,8 +52,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Increase timeout for large uploads
 app.use((req, res, next) => {
@@ -58,6 +69,7 @@ const authLimiter = rateLimit({
   message: { message: 'Too many login attempts, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 const apiLimiter = rateLimit({
@@ -65,6 +77,7 @@ const apiLimiter = rateLimit({
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -117,8 +130,9 @@ if (isProd) {
 }
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  console.error('[ERROR]', err.message);
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({
     message: 'Something went wrong!',
     error: isProd ? undefined : err.message
   });
@@ -128,6 +142,15 @@ const PORT = process.env.PORT || 5000;
 
 connectDB();
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} [${isProd ? 'production' : 'development'}]`);
+});
+
+// Graceful shutdown — let PM2 restart cleanly without dropping in-flight requests
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received — graceful shutdown');
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
 });
