@@ -125,43 +125,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FEATURES */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-[#f5f7fa]" data-aos="fade-up">
-        <div className="max-w-[1200px] mx-auto">
-          <h3 className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] font-bold text-[#1e3d69] text-center mb-2 md:mb-4 uppercase">
-            {features.title?.[language] || features.title?.uz || 'GLOBAL HAMKORLIK, KAFOLATLANGAN SIFAT VA'}
-          </h3>
-          <h4 className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] font-bold text-[#1e3d69] text-center mb-8 md:mb-16 uppercase">
-            {features.subtitle?.[language] || features.subtitle?.uz || "PROFESSIONAL TA'MINOT."}
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
-            {(featureItems.length > 0 ? featureItems : [
-              { title: { uz: "To'g'ridan To'g'ri IMPORT", ru: 'Прямой ИМПОРТ', en: 'Direct IMPORT' }, description: { uz: "Ehtiyot Qismlari Ishlab Chiqaruvchilardan Bevosita Olib Kiramiz!", ru: 'Закупаем запчасти напрямую у производителей!', en: 'We purchase spare parts directly from manufacturers!' }, icon: 'TrendingUp' },
-              { title: { uz: 'Maxsus Buyurtma Xizmati.', ru: 'Услуга специального заказа.', en: 'Custom Order Service.' }, description: { uz: "Omborda Bo'lmagan Texnologiya Ehtiyot Qismlarini Siz Uchun Keltrib Beramiz!", ru: 'Доставим технологические запчасти специально для вас!', en: 'We will bring technology spare parts especially for you!' }, icon: 'Truck' },
-              { title: { uz: 'Sifat kafolati', ru: 'Гарантия качества', en: 'Quality guarantee' }, description: { uz: 'Barcha mahsulotlar sifat sertifikatiga ega.', ru: 'Все товары имеют сертификат качества.', en: 'All products have a quality certificate.' }, icon: 'Package' },
-              { title: { uz: "Qulay to'lov", ru: 'Удобная оплата', en: 'Easy payment' }, description: { uz: "Turli to'lov usullari mavjud.", ru: 'Доступны различные способы оплаты.', en: 'Various payment methods available.' }, icon: 'CreditCard' },
-            ]).map((item, i) => {
-              const IconComp = ICON_MAP[item.icon] || Package
-              const title = typeof item.title === 'object' ? (item.title[language] || item.title.uz || '') : item.title
-              const desc = typeof item.description === 'object' ? (item.description[language] || item.description.uz || '') : item.description
-              return (
-                <div key={i} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-delay={i * 100}>
-                  <div className="w-16 h-16 bg-[#7c8ff5] rounded-full flex items-center justify-center mb-6">
-                    <IconComp size={32} className="text-white" />
-                  </div>
-                  <h5 className="text-xl font-bold text-gray-900 mb-3">{title}</h5>
-                  <p className="text-gray-600 leading-relaxed">{desc}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* KATEGORIYALAR */}
       {categories.length > 0 && (
-        <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto" data-aos="fade-up">
-          <div className="flex items-end justify-between mb-8 md:mb-12">
+        <section className="py-10 md:py-14 lg:py-16 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto" data-aos="fade-up">
+          <div className="flex items-end justify-between mb-6 md:mb-10">
             <div>
               <p className="text-[#3563e9] font-semibold text-sm md:text-base mb-1 tracking-wide uppercase">
                 {language === 'uz' ? 'Mahsulotlarimiz' : language === 'ru' ? 'Наши продукты' : 'Our Products'}
@@ -213,6 +180,39 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* FEATURES */}
+      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-[#f5f7fa]" data-aos="fade-up">
+        <div className="max-w-[1200px] mx-auto">
+          <h3 className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] font-bold text-[#1e3d69] text-center mb-2 md:mb-4 uppercase">
+            {features.title?.[language] || features.title?.uz || 'GLOBAL HAMKORLIK, KAFOLATLANGAN SIFAT VA'}
+          </h3>
+          <h4 className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] font-bold text-[#1e3d69] text-center mb-8 md:mb-16 uppercase">
+            {features.subtitle?.[language] || features.subtitle?.uz || "PROFESSIONAL TA'MINOT."}
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
+            {(featureItems.length > 0 ? featureItems : [
+              { title: { uz: "To'g'ridan To'g'ri IMPORT", ru: 'Прямой ИМПОРТ', en: 'Direct IMPORT' }, description: { uz: "Ehtiyot Qismlari Ishlab Chiqaruvchilardan Bevosita Olib Kiramiz!", ru: 'Закупаем запчасти напрямую у производителей!', en: 'We purchase spare parts directly from manufacturers!' }, icon: 'TrendingUp' },
+              { title: { uz: 'Maxsus Buyurtma Xizmati.', ru: 'Услуга специального заказа.', en: 'Custom Order Service.' }, description: { uz: "Omborda Bo'lmagan Texnologiya Ehtiyot Qismlarini Siz Uchun Keltrib Beramiz!", ru: 'Доставим технологические запчасти специально для вас!', en: 'We will bring technology spare parts especially for you!' }, icon: 'Truck' },
+              { title: { uz: 'Sifat kafolati', ru: 'Гарантия качества', en: 'Quality guarantee' }, description: { uz: 'Barcha mahsulotlar sifat sertifikatiga ega.', ru: 'Все товары имеют сертификат качества.', en: 'All products have a quality certificate.' }, icon: 'Package' },
+              { title: { uz: "Qulay to'lov", ru: 'Удобная оплата', en: 'Easy payment' }, description: { uz: "Turli to'lov usullari mavjud.", ru: 'Доступны различные способы оплаты.', en: 'Various payment methods available.' }, icon: 'CreditCard' },
+            ]).map((item, i) => {
+              const IconComp = ICON_MAP[item.icon] || Package
+              const title = typeof item.title === 'object' ? (item.title[language] || item.title.uz || '') : item.title
+              const desc = typeof item.description === 'object' ? (item.description[language] || item.description.uz || '') : item.description
+              return (
+                <div key={i} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-delay={i * 100}>
+                  <div className="w-16 h-16 bg-[#7c8ff5] rounded-full flex items-center justify-center mb-6">
+                    <IconComp size={32} className="text-white" />
+                  </div>
+                  <h5 className="text-xl font-bold text-gray-900 mb-3">{title}</h5>
+                  <p className="text-gray-600 leading-relaxed">{desc}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
 
       {/* TOP PRODUCTS */}
       <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto" data-aos="fade-up">

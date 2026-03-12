@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { categoriesAPI } from '../../services/api'
-import { Plus, Pencil, Trash2, X, ChevronDown, ChevronRight, FolderOpen, Folder, Search, Tag } from 'lucide-react'
+import { categoriesAPI, uploadAPI } from '../../services/api'
+import { Plus, Pencil, Trash2, X, ChevronDown, ChevronRight, FolderOpen, Folder, Search, Tag, ImageIcon } from 'lucide-react'
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([])
@@ -15,7 +15,10 @@ export default function AdminCategories() {
     parent: '',
     order: 0,
     isActive: true,
+    image: '',
   })
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imagePreview, setImagePreview] = useState('')
 
   useEffect(() => { fetchCategories() }, [])
 
@@ -54,7 +57,8 @@ export default function AdminCategories() {
 
   const openCreate = (parentId = '') => {
     setEditing(null)
-    setForm({ name: { uz: '', ru: '', en: '' }, parent: parentId, order: 0, isActive: true })
+    setForm({ name: { uz: '', ru: '', en: '' }, parent: parentId, order: 0, isActive: true, image: '' })
+    setImagePreview('')
     setShowModal(true)
   }
 
@@ -65,8 +69,24 @@ export default function AdminCategories() {
       parent: cat.parent?._id || cat.parent || '',
       order: cat.order || 0,
       isActive: cat.isActive !== false,
+      image: cat.image || '',
     })
+    setImagePreview(cat.image || '')
     setShowModal(true)
+  }
+
+  const handleImageUpload = async (file) => {
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return }
+    setImagePreview(URL.createObjectURL(file))
+    setImageUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const res = await uploadAPI.single(fd)
+      setForm(f => ({ ...f, image: res.data.url }))
+    } catch { setImagePreview(form.image || ''); alert('Upload failed') }
+    finally { setImageUploading(false) }
   }
 
   const handleSubmit = async (e) => {
@@ -78,6 +98,11 @@ export default function AdminCategories() {
       setShowModal(false)
       fetchCategories()
     } catch (err) { alert(err.response?.data?.message || 'Error') }
+  }
+
+  const removeImage = () => {
+    setForm(f => ({ ...f, image: '' }))
+    setImagePreview('')
   }
 
   const handleDelete = async (id) => {
@@ -154,8 +179,10 @@ export default function AdminCategories() {
                   <button onClick={() => toggleExpand(cat._id)} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
                     {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                   </button>
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FolderOpen size={16} className="text-blue-600" />
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {cat.image
+                      ? <img src={cat.image} alt="" className="w-full h-full object-cover" />
+                      : <FolderOpen size={16} className="text-blue-600" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-900 text-sm">{cat.name?.uz}</p>
@@ -283,6 +310,35 @@ export default function AdminCategories() {
                 <input placeholder="Name (UZ)" value={form.name.uz} onChange={e => setForm(f => ({ ...f, name: { ...f.name, uz: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
                 <input placeholder="Name (RU)" value={form.name.ru} onChange={e => setForm(f => ({ ...f, name: { ...f.name, ru: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
                 <input placeholder="Name (EN)" value={form.name.en} onChange={e => setForm(f => ({ ...f, name: { ...f.name, en: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              {/* Image Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Rasm (Ixtiyoriy)</label>
+                {imagePreview ? (
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200">
+                    <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+                    {imageUploading && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                    <button type="button" onClick={removeImage} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
+                    <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e.target.files[0])} />
+                    {imageUploading
+                      ? <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      : <>
+                        <ImageIcon size={28} className="text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-500 font-medium">Rasm yuklash</span>
+                        <span className="text-xs text-gray-400 mt-1">Max 5MB</span>
+                      </>
+                    }
+                  </label>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
