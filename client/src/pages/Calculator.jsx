@@ -45,7 +45,7 @@ export default function Calculator() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="w-full bg-gradient-to-r from-[#4a5fc1] to-[#7b8fd9] py-10 md:py-20">
+      <div className="w-full bg-gradient-to-r from-[#1e3d69] to-[#3563e9] py-10 md:py-20">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20">
           <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-white mb-3 md:mb-4">
             {language === 'uz' && 'Ekspert orqali narx hisoblatish'}

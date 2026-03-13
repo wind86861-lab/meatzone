@@ -132,6 +132,13 @@ if (isProd) {
       return res.status(404).json({ message: 'Not found' });
     }
 
+    // Don't serve index.html for asset requests - let them 404 properly
+    // This prevents MIME type errors when assets are missing
+    if (req.path.startsWith('/assets/') ||
+      req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)) {
+      return res.status(404).send('Asset not found');
+    }
+
     // Serve index.html for all other routes (SPA routing)
     res.sendFile(path.join(clientBuild, 'index.html'), (err) => {
       if (err) {
