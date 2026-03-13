@@ -4,20 +4,20 @@ import { Calendar, Eye, ArrowLeft, Package } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
-import { blogsAPI, productsAPI, requestsAPI } from '../services/api'
+import { blogsAPI, requestsAPI } from '../services/api'
 
 export default function BlogDetail() {
   const { language } = useLanguage()
   const { id } = useParams()
   const [blog, setBlog] = useState(null)
-  const [relatedProducts, setRelatedProducts] = useState([])
+  const [relatedBlogs, setRelatedBlogs] = useState([])
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
 
   useEffect(() => {
     if (id) {
       blogsAPI.getById(id).then(res => setBlog(res.data)).catch(() => { })
-      productsAPI.getAll({ featured: 'true', active: 'true', limit: 3 }).then(res => setRelatedProducts(res.data?.products || [])).catch(() => { })
+      blogsAPI.getAll({ published: 'true', limit: 3 }).then(res => setRelatedBlogs(res.data?.blogs || [])).catch(() => { })
     }
   }, [id])
 
@@ -93,22 +93,25 @@ export default function BlogDetail() {
             {language === 'en' && 'SIMILAR NEWS'}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {relatedProducts.map((product) => (
-              <Link key={product._id} to={`/catalog/${product._id}`} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow block">
+            {relatedBlogs.map((blogItem) => (
+              <Link key={blogItem._id} to={`/blog/${blogItem._id}`} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow block">
                 <div className="h-48 bg-gray-50 flex items-center justify-center">
-                  {product.images?.[0]
-                    ? <img src={product.images[0]} alt={product.name?.[language]} className="w-full h-full object-contain p-4" />
+                  {blogItem.image
+                    ? <img src={blogItem.image} alt={blogItem.title?.[language]} className="w-full h-full object-cover" />
                     : <Package size={48} className="text-gray-200" />}
                 </div>
                 <div className="p-5">
+                  <div className="text-xs text-gray-500 mb-2">
+                    {new Date(blogItem.createdAt).toLocaleDateString(language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ')}
+                  </div>
                   <h3 className="font-bold text-gray-900 mb-2 text-sm line-clamp-2">
-                    {product.name?.[language] || product.name?.uz}
+                    {blogItem.title?.[language] || blogItem.title?.uz}
                   </h3>
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {product.description?.[language] || product.description?.uz}
+                    {blogItem.content?.[language] || blogItem.content?.uz}
                   </p>
                   <span className="block w-full bg-[#3563e9] text-white py-2.5 rounded-lg font-medium hover:bg-[#2952d1] transition-colors text-center">
-                    {language === 'uz' ? 'Batafsil' : language === 'ru' ? 'Подробнее' : 'Details'}
+                    {language === 'uz' ? 'Batafsil' : language === 'ru' ? 'Подробнее' : 'Read more'}
                   </span>
                 </div>
               </Link>
