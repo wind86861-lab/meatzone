@@ -109,37 +109,49 @@ app.get('/api/health', (req, res) => {
 if (isProd) {
   const clientBuild = path.join(__dirname, '..', 'client', 'dist');
 
-  // Serve static files with proper caching
-  app.use(express.static(clientBuild, {
-    maxAge: '1d',
-    etag: true,
-    index: false, // Don't auto-serve index.html from static middleware
+  // Serve hashed assets (/assets/*) with long-term immutable cache
+  // These files have content hashes in their names, so they never go stale
+  app.use('/assets', express.static(path.join(clientBuild, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+    etag: false,
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.css')) {
         res.setHeader('Content-Type', 'text/css');
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       } else if (filePath.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript');
-      } else if (filePath.endsWith('.html')) {
-        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }
     }
   }));
 
-  // SPA fallback - serve index.html for all non-API, non-upload, non-asset routes
+  // Serve other static files (images etc) with moderate cache
+  app.use(express.static(clientBuild, {
+    maxAge: '1d',
+    etag: true,
+    index: false,
+  }));
+
+  // SPA fallback - serve index.html for all page routes
   app.get('*', (req, res) => {
-    // Skip API and upload routes (already handled above)
+    // API and upload routes should have been handled already — 404 if not
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
       return res.status(404).json({ message: 'Not found' });
     }
 
-    // Don't serve index.html for asset requests - let them 404 properly
-    // This prevents MIME type errors when assets are missing
+    // Never serve index.html for asset/file requests
     if (req.path.startsWith('/assets/') ||
-      req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)) {
-      return res.status(404).send('Asset not found');
+      req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map|json)$/)) {
+      return res.status(404).send('Not found');
     }
 
-    // Serve index.html for all other routes (SPA routing)
+    // Serve index.html — MUST be no-store so browsers never cache it.
+    // index.html references hashed JS/CSS filenames that change every build.
+    // If index.html is cached and we rebuild, users load dead asset references.
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(clientBuild, 'index.html'), (err) => {
       if (err) {
         console.error('Error serving index.html:', err);
