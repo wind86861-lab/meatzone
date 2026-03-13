@@ -108,24 +108,37 @@ app.get('/api/health', (req, res) => {
 // Serve built React client in production
 if (isProd) {
   const clientBuild = path.join(__dirname, '..', 'client', 'dist');
+
+  // Serve static files with proper caching
   app.use(express.static(clientBuild, {
-    maxAge: '1y',
+    maxAge: '1d',
     etag: true,
+    index: false, // Don't auto-serve index.html from static middleware
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.css')) {
         res.setHeader('Content-Type', 'text/css');
       } else if (filePath.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript');
+      } else if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
       }
     }
   }));
-  // Catch-all route - only for non-file requests
+
+  // SPA fallback - serve index.html for all non-API, non-upload, non-asset routes
   app.get('*', (req, res) => {
-    // Don't serve index.html for asset requests
-    if (req.path.includes('.')) {
-      return res.status(404).send('File not found');
+    // Skip API and upload routes (already handled above)
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+      return res.status(404).json({ message: 'Not found' });
     }
-    res.sendFile(path.join(clientBuild, 'index.html'));
+
+    // Serve index.html for all other routes (SPA routing)
+    res.sendFile(path.join(clientBuild, 'index.html'), (err) => {
+      if (err) {
+        console.error('Error serving index.html:', err);
+        res.status(500).send('Error loading page');
+      }
+    });
   });
 }
 
