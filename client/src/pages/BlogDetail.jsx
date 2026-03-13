@@ -18,7 +18,6 @@ export default function BlogDetail() {
     if (id) {
       blogsAPI.getById(id).then(res => setBlog(res.data)).catch(() => { })
       blogsAPI.getAll({ published: 'true', limit: 3 }).then(res => setRelatedBlogs(res.data?.blogs || [])).catch(() => { })
-      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100)
     }
   }, [id])
 
@@ -98,7 +97,6 @@ export default function BlogDetail() {
               <Link
                 key={blogItem._id}
                 to={`/blog/${blogItem._id}`}
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow block"
               >
                 <div className="h-48 bg-gray-50 flex items-center justify-center">
