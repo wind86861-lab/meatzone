@@ -313,7 +313,7 @@ export default function Home() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
           {visibleShowcase.map((img, i) => (
-            <div key={i} data-aos="zoom-in" data-aos-delay={i * 200}>
+            <div key={i} className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02]" data-aos="zoom-in" data-aos-delay={i * 200}>
               <img src={img} alt="" className="w-full h-[300px] object-contain" />
             </div>
           ))}
