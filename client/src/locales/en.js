@@ -75,7 +75,7 @@ export const en = {
     phone: "*Your phone number",
     productName: "* Product name, Model",
     quantity: "*Product quantity",
-    imageUpload: "Upload product image (Optional)",
+    imageUpload: "Upload product image (Required)",
     imageUploadText: "Upload image",
     submitButton: "Submit"
   },

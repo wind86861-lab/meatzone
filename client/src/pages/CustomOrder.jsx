@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatPhoneNumber } from '../utils/phoneValidation'
 import { useLanguage } from '../context/LanguageContext'
 import { faqsAPI, productsAPI, requestsAPI, uploadAPI, pageContentAPI } from '../services/api'
 import { Link } from 'react-router-dom'
@@ -147,7 +148,7 @@ export default function CustomOrder() {
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={e => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9+]/g, '') })}
+                  onChange={e => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
                   pattern="^(\+998[0-9]{9}|[0-9]{9})$"
                   placeholder="+998 90 123 45 67"
                   title="Enter valid phone: +998XXXXXXXXX or XXXXXXXXX"

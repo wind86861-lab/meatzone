@@ -75,7 +75,7 @@ export const ru = {
     phone: "*Ваш номер телефона",
     productName: "* Название товара, Модель",
     quantity: "*Количество товара",
-    imageUpload: "Загрузите фото товара (Необязательно)",
+    imageUpload: "Загрузите фото товара (Обязательно)",
     imageUploadText: "Загрузить фото",
     submitButton: "Отправить"
   },

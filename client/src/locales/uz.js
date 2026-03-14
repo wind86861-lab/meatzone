@@ -75,7 +75,7 @@ export const uz = {
     phone: "*Telefon nomeringiz",
     productName: "* Tovar nomi, Modeli",
     quantity: "*Mahsulot miqdori",
-    imageUpload: "Mahsulot rasmini yuklang (Ixtiyoriy)",
+    imageUpload: "Mahsulot rasmini yuklang (Majburiy)",
     imageUploadText: "Rasmni yuklash",
     submitButton: "Yuborish"
   },
