@@ -537,7 +537,7 @@ export default function Home() {
 
       {/* FAQ */}
       <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto">
-        <h3 className="text-[22px] sm:text-[28px] md:text-[34px] lg:text-[42px] font-bold text-[#1e3d69] mb-6 md:mb-12">Eng ko'p beriladigan savollar</h3>
+        <h3 className="text-[22px] sm:text-[28px] md:text-[34px] lg:text-[42px] font-bold text-[#1e3d69] mb-6 md:mb-12">{t.faq.title}</h3>
         <div className="max-w-4xl">
           {faqs.map((faq, index) => (
             <div key={faq._id || index} className="border-b border-gray-200 last:border-0">
