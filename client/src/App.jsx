@@ -11,6 +11,13 @@ import Blog from './pages/Blog'
 import BlogDetail from './pages/BlogDetail'
 import About from './pages/About'
 import Admin from './pages/Admin'
+import DeliveryPage from './pages/DeliveryPage'
+import GuaranteePage from './pages/GuaranteePage'
+import ContactsPage from './pages/ContactsPage'
+import AboutPage from './pages/AboutPage'
+import CabinetPage from './pages/CabinetPage'
+import Account from './pages/Account'
+import Favorites from './pages/Favorites'
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -37,7 +44,13 @@ function App() {
         <Route path="/branches" element={<Branches />} />
         <Route path="/blog/:id" element={<BlogDetail />} />
         <Route path="/blog" element={<Blog />} />
-        <Route path="/about" element={<About />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/delivery" element={<DeliveryPage />} />
+        <Route path="/guarantee" element={<GuaranteePage />} />
+        <Route path="/contacts" element={<ContactsPage />} />
+        <Route path="/cabinet" element={<CabinetPage />} />
+        <Route path="/account" element={<Account />} />
+        <Route path="/favorites" element={<Favorites />} />
         <Route path="/admin/*" element={<Admin />} />
       </Routes>
     </Router>

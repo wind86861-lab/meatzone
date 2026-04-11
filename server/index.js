@@ -90,6 +90,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API routes
 app.use('/api/auth', authLimiter, require('./routes/auth'));
+app.use('/api/users', apiLimiter, require('./routes/users'));
+app.use('/api/notifications', apiLimiter, require('./routes/notifications'));
 app.use('/api/customers', apiLimiter, require('./routes/customers'));
 app.use('/api/appointments', apiLimiter, require('./routes/appointments'));
 app.use('/api/services', apiLimiter, require('./routes/services'));
@@ -177,8 +179,26 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
+const { initBot } = require('./bot/index');
+const mongoose = require('mongoose');
 
 connectDB();
+
+// Start bot after MongoDB connects
+if (mongoose.connection.readyState === 1) {
+  initBot();
+} else {
+  mongoose.connection.once('connected', () => {
+    initBot();
+  });
+}
+
+// Fallback: if bot hasn't started within 10s, try anyway
+setTimeout(() => {
+  if (mongoose.connection.readyState === 1) {
+    initBot();
+  }
+}, 10000);
 
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} [${isProd ? 'production' : 'development'}]`);

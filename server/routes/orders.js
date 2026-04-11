@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const Order = require('../models/Order');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, adminOrManager } = require('../middleware/auth');
 const { sendTelegramMessage, formatOrderMessage } = require('../utils/telegram');
 
 const submitLimiter = rateLimit({
@@ -13,8 +13,8 @@ const submitLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Admin: get all orders
-router.get('/', protect, admin, async (req, res) => {
+// Admin/Manager: get all orders
+router.get('/', protect, adminOrManager, async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
     const query = {};
@@ -30,8 +30,8 @@ router.get('/', protect, admin, async (req, res) => {
   }
 });
 
-// Public: create order
-router.post('/', submitLimiter, async (req, res) => {
+// Public: create order (with rate limiting)
+router.post('/public', submitLimiter, async (req, res) => {
   try {
     const order = await Order.create(req.body);
     res.status(201).json(order);
@@ -43,8 +43,21 @@ router.post('/', submitLimiter, async (req, res) => {
   }
 });
 
-// Admin: update order status
-router.put('/:id', protect, admin, async (req, res) => {
+// Admin/Manager: create order (authenticated, no rate limit)
+router.post('/', protect, adminOrManager, async (req, res) => {
+  try {
+    const order = await Order.create(req.body);
+    res.status(201).json(order);
+    sendTelegramMessage(formatOrderMessage(order)).catch((err) => {
+      console.error('Telegram notification error:', err.message);
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin/Manager: update order status
+router.put('/:id', protect, adminOrManager, async (req, res) => {
   try {
     const order = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!order) return res.status(404).json({ message: 'Order not found' });

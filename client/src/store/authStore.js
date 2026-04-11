@@ -25,11 +25,8 @@ export const useAuthStore = create(
           })
           if (res.ok) {
             const user = await res.json()
-            if (user.role === 'admin') {
-              set({ user, isAuthenticated: true, isLoading: false })
-            } else {
-              set({ user: null, token: null, isAuthenticated: false, isLoading: false })
-            }
+            // Allow all authenticated users (admin, manager, technician)
+            set({ user, isAuthenticated: true, isLoading: false })
           } else {
             set({ user: null, token: null, isAuthenticated: false, isLoading: false })
           }

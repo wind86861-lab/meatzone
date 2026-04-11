@@ -1,555 +1,651 @@
-import { useState, useEffect } from 'react'
-import { MapPin, TrendingUp, Package, Truck, CreditCard, ChevronDown, Phone, Shield, Globe, Wrench, Zap } from 'lucide-react'
-import { useLanguage } from '../context/LanguageContext'
-import { faqsAPI, productsAPI, branchesAPI, blogsAPI, pageContentAPI, requestsAPI, uploadAPI, categoriesAPI } from '../services/api'
-import { formatPhoneNumber, isValidUzbekPhoneNumber } from '../utils/phoneValidation'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  Shield, Truck, CreditCard, Headphones, Star,
+  ChevronLeft, ChevronRight, ArrowRight,
+  Wrench, Droplets, Zap, Layers, Paintbrush, Hammer, Lightbulb, Trees,
+  ShoppingCart, Package, Sparkles
+} from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
-import header1 from '../image/header1.jpg'
-import header2 from '../image/header2.jpg'
-import header3 from '../image/header3.jpg'
-import pr1 from '../image/pr1.png'
-import pr2 from '../image/pr2.png'
+import { useCart } from '../context/CartContext'
+import { mockAPI, mockProducts } from '../data/mockData'
+import heroBg1 from '../image/image copy 2.png'
+import heroBg2 from '../image/image copy 3.png'
+import heroBg3 from '../image/image copy 4.png'
+import heroBg4 from '../image/image copy 5.png'
 
-const ICON_MAP = {
-  TrendingUp, Truck, Package, CreditCard, Shield, Globe, Wrench, Zap,
+// ─── Categories ────────────────────────────────────────────────
+const categories = [
+  { id: 'tools', name: 'Инструменты', count: 245, Icon: Wrench },
+  { id: 'plumbing', name: 'Сантехника', count: 189, Icon: Droplets },
+  { id: 'electrical', name: 'Электрика', count: 156, Icon: Zap },
+  { id: 'materials', name: 'Стройматериалы', count: 312, Icon: Layers },
+  { id: 'paints', name: 'Краски', count: 98, Icon: Paintbrush },
+  { id: 'fasteners', name: 'Крепёж', count: 421, Icon: Hammer },
+  { id: 'lighting', name: 'Освещение', count: 134, Icon: Lightbulb },
+  { id: 'garden', name: 'Сад и огород', count: 76, Icon: Trees },
+]
+
+const reviews = [
+  { id: 1, text: 'Отличный магазин! Быстрая доставка и качественные материалы. Заказываю уже не первый раз и всегда доволен.', author: 'Александр К.', date: '15 марта 2026', rating: 5 },
+  { id: 2, text: 'Очень удобный каталог, нашёл всё что нужно для ремонта ванной комнаты. Цены приемлемые, доставка вовремя.', author: 'Мария С.', date: '10 марта 2026', rating: 5 },
+  { id: 3, text: 'Профессиональные консультанты помогли подобрать инструмент. Рекомендую всем кто делает ремонт!', author: 'Дмитрий В.', date: '5 марта 2026', rating: 4 },
+  { id: 4, text: 'Широкий ассортимент строительных материалов. Особенно порадовали скидки на краску и крепёж.', author: 'Елена П.', date: '1 марта 2026', rating: 5 },
+]
+
+const advantages = [
+  { Icon: Shield, title: 'Гарантия качества', desc: 'Сертифицированные товары от проверенных производителей' },
+  { Icon: Truck, title: 'Быстрая доставка', desc: 'Доставим по Ташкенту за 24 часа, по регионам — за 3 дня' },
+  { Icon: CreditCard, title: 'Удобная оплата', desc: 'Наличные, карта, перевод — выбирайте удобный способ' },
+  { Icon: Headphones, title: 'Поддержка 24/7', desc: 'Наши специалисты всегда на связи и готовы помочь' },
+]
+
+// ─── Intersection Observer hook ─────────────────────────────
+function useFadeIn() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { el.classList.add('visible'); observer.unobserve(el) } },
+      { threshold: 0.15 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  return ref
 }
 
-export default function Home() {
-  const { language, t } = useLanguage()
-  const [openFaq, setOpenFaq] = useState(null)
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [showcaseSlide, setShowcaseSlide] = useState(0)
-  const [partnerSlide, setPartnerSlide] = useState(0)
-  const [faqs, setFaqs] = useState([])
-  const [topProducts, setTopProducts] = useState([])
-  const [branches, setBranches] = useState([])
-  const [blogs, setBlogs] = useState([])
-  const [categories, setCategories] = useState([])
-  const [cms, setCms] = useState({})
-  const [consultForm, setConsultForm] = useState({ name: '', phone: '', productName: '', quantity: '' })
-  const [consultImage, setConsultImage] = useState(null)
-  const [consultImagePreview, setConsultImagePreview] = useState(null)
-  const [consultUploading, setConsultUploading] = useState(false)
-  const [consultSubmitting, setConsultSubmitting] = useState(false)
-  const [consultSubmitted, setConsultSubmitted] = useState(false)
-  const fallbackBgImages = [header1, header2, header3]
-  const fallbackShowcaseImages = [pr1, pr2]
-
-  const toggleFaq = (index) => setOpenFaq(openFaq === index ? null : index)
+// ─── Animated Counter ───────────────────────────────────────
+function AnimatedCounter({ target, suffix = '' }) {
+  const [count, setCount] = useState(0)
+  const ref = useRef(null)
+  const started = useRef(false)
 
   useEffect(() => {
-    pageContentAPI.getAll({ page: 'home' }).then(res => {
-      const map = {}
-        ; (res.data || []).forEach(item => { map[item.section] = item.content || {} })
-      setCms(map)
-    }).catch(() => { })
-    faqsAPI.getAll({ active: 'true' }).then(res => setFaqs(res.data || [])).catch(() => { })
-    productsAPI.getAll({ featured: 'true', active: 'true' }).then(res => setTopProducts(res.data?.products || [])).catch(() => { })
-    branchesAPI.getAll({ showOnHomepage: 'true' }).then(res => setBranches(res.data || [])).catch(() => { })
-    blogsAPI.getAll({ published: 'true', featured: 'true', limit: 3 }).then(res => setBlogs(res.data?.blogs || [])).catch(() => { })
-    categoriesAPI.getAll({ parent: 'null', active: 'true' }).then(res => setCategories(res.data || [])).catch(() => { })
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !started.current) {
+        started.current = true
+        const duration = 2000
+        const startTime = performance.now()
+        const numTarget = parseInt(target)
+        const step = (now) => {
+          const elapsed = now - startTime
+          const progress = Math.min(elapsed / duration, 1)
+          const eased = 1 - Math.pow(1 - progress, 3)
+          setCount(Math.floor(eased * numTarget))
+          if (progress < 1) requestAnimationFrame(step)
+        }
+        requestAnimationFrame(step)
+      }
+    }, { threshold: 0.5 })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [target])
+
+  return <span ref={ref}>{count}{suffix}</span>
+}
+
+// ─── Product Card ───────────────────────────────────────────
+function ProductCard({ product, onAdd }) {
+  return (
+    <div className="group relative bg-blue-50 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl flex flex-col border border-blue-100">
+      {/* Discount Badge - Top Left */}
+      {product.hasDiscount && (
+        <div className="absolute top-3 left-3 z-20">
+          <span className="flex items-center gap-1 bg-red-400 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-sm">
+            <Zap size={10} fill="currentColor" />
+            −{product.discountPercent}%
+          </span>
+        </div>
+      )}
+
+      {/* New Badge - Top Right */}
+      {product.isNew && (
+        <div className="absolute top-3 right-3 z-20">
+          <span className="bg-rose-300 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-sm">
+            NEW
+          </span>
+        </div>
+      )}
+
+      <Link to={`/catalog/${product._id}`} className="block flex-1 flex flex-col relative z-10">
+        {/* Image Container */}
+        <div className="relative aspect-square bg-blue-50 overflow-hidden p-4">
+          {product.images?.[0] ? (
+            <img
+              src={product.images[0]}
+              alt={product.name?.ru || product.name}
+              className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-blue-100 rounded-xl">
+              <Package size={48} className="text-blue-300" />
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="px-4 pb-3 flex flex-col flex-1">
+          {/* Rating */}
+          <div className="flex items-center gap-1 mb-1">
+            <Star size={14} className="text-yellow-400 fill-yellow-400" />
+            <span className="text-xs text-dark-600">{product.rating || '4.7'}</span>
+          </div>
+
+          {/* Product Name */}
+          <h3 className="text-xs font-semibold text-dark-900 line-clamp-2 mb-2 leading-snug">
+            {product.name?.ru || product.name}
+          </h3>
+
+          {/* Price Section */}
+          <div className="mt-auto">
+            {product.hasDiscount && product.price && (
+              <div className="text-dark-400 text-xs line-through mb-0.5">
+                {product.price.toLocaleString()} сум
+              </div>
+            )}
+            <div className="text-emerald-500 text-sm font-bold">
+              {(product.finalPrice || product.price).toLocaleString()} сум
+            </div>
+          </div>
+        </div>
+      </Link>
+
+      {/* Action Button - White with border */}
+      <div className="px-4 pb-4">
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            onAdd(product)
+          }}
+          className="w-full bg-white border border-dark-200 text-dark-700 font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-dark-50 hover:border-dark-300 transition-all duration-200"
+        >
+          <ShoppingCart size={16} />
+          <span className="text-sm">В корзину</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ─────────────────────────────────────────
+export default function Home() {
+  const { addItem } = useCart()
+  const [reviewIdx, setReviewIdx] = useState(0)
+  const scrollRef = useRef(null)
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [saleSlide, setSaleSlide] = useState(0)
+  const autoSlideInterval = useRef(null)
+  const saleAutoSlideInterval = useRef(null)
+  const reviewAutoSlideInterval = useRef(null)
+
+  const handleAddToCart = useCallback((product) => {
+    addItem({ _id: product._id, name: product.name?.ru || product.name, finalPrice: product.finalPrice || product.price, images: product.images || [] })
+  }, [addItem])
+
+  // Auto-slide carousel for popular products
+  const productsToShow = mockProducts.slice(0, 8)
+  const itemsPerView = 4
+  const maxSlide = Math.max(0, productsToShow.length - itemsPerView)
+
+  const nextSlide = useCallback(() => {
+    setCurrentSlide(prev => (prev >= maxSlide ? 0 : prev + 1))
+  }, [maxSlide])
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide(prev => (prev <= 0 ? maxSlide : prev - 1))
+  }, [maxSlide])
+
+  useEffect(() => {
+    autoSlideInterval.current = setInterval(nextSlide, 4000)
+    return () => {
+      if (autoSlideInterval.current) clearInterval(autoSlideInterval.current)
+    }
+  }, [nextSlide])
+
+  // Auto-slide carousel for sale section
+  const saleProducts = mockProducts.filter(p => p.hasDiscount)
+  const saleItemsPerView = 4
+  const maxSaleSlide = Math.max(0, saleProducts.length - saleItemsPerView)
+
+  const nextSaleSlide = useCallback(() => {
+    setSaleSlide(prev => (prev >= maxSaleSlide ? 0 : prev + 1))
+  }, [maxSaleSlide])
+
+  const prevSaleSlide = useCallback(() => {
+    setSaleSlide(prev => (prev <= 0 ? maxSaleSlide : prev - 1))
+  }, [maxSaleSlide])
+
+  const handleSaleManualNav = useCallback((direction) => {
+    if (saleAutoSlideInterval.current) {
+      clearInterval(saleAutoSlideInterval.current)
+    }
+    if (direction === 'next') nextSaleSlide()
+    else prevSaleSlide()
+    saleAutoSlideInterval.current = setInterval(nextSaleSlide, 4000)
+  }, [nextSaleSlide, prevSaleSlide])
+
+  useEffect(() => {
+    saleAutoSlideInterval.current = setInterval(nextSaleSlide, 4000)
+    return () => {
+      if (saleAutoSlideInterval.current) clearInterval(saleAutoSlideInterval.current)
+    }
+  }, [nextSaleSlide])
+
+  const maxReviewIdx = Math.max(0, reviews.length - 4)
+
+  const nextReviewSlide = useCallback(() => {
+    setReviewIdx(prev => (prev >= maxReviewIdx ? 0 : prev + 1))
+  }, [maxReviewIdx])
+
+  const pauseReviewAutoSlide = useCallback(() => {
+    if (reviewAutoSlideInterval.current) {
+      clearInterval(reviewAutoSlideInterval.current)
+      reviewAutoSlideInterval.current = null
+    }
   }, [])
 
-  const heroImages = (cms.hero?.bgImages?.length > 0) ? cms.hero.bgImages : fallbackBgImages
-  const showcaseImages = (cms.showcase?.images?.length > 0) ? cms.showcase.images : fallbackShowcaseImages
+  const resumeReviewAutoSlide = useCallback(() => {
+    if (!reviewAutoSlideInterval.current) {
+      reviewAutoSlideInterval.current = setInterval(nextReviewSlide, 4000)
+    }
+  }, [nextReviewSlide])
 
   useEffect(() => {
-    if (heroImages.length <= 1) return
-    const interval = setInterval(() => setCurrentSlide(p => (p + 1) % heroImages.length), 4000)
-    return () => clearInterval(interval)
-  }, [heroImages.length])
+    reviewAutoSlideInterval.current = setInterval(nextReviewSlide, 4000)
+    return () => {
+      if (reviewAutoSlideInterval.current) clearInterval(reviewAutoSlideInterval.current)
+    }
+  }, [nextReviewSlide])
 
+  const handleManualNav = useCallback((direction) => {
+    if (autoSlideInterval.current) clearInterval(autoSlideInterval.current)
+    if (direction === 'next') nextSlide()
+    else prevSlide()
+    autoSlideInterval.current = setInterval(nextSlide, 4000)
+  }, [nextSlide, prevSlide])
 
-  const hero = cms.hero || {}
-  const features = cms.features || {}
-  const featureItems = features.items || []
-  const advantages = cms.advantages || {}
-  const advantageItems = advantages.items || []
-  const showcase = cms.showcase || {}
-  const consultation = cms.consultation || {}
-  const branchesSection = cms.branches || {}
-  const topProductsSection = cms.topProducts || {}
-  const partners = cms.partners || {}
-  const partnerItems = partners.items?.filter(p => p.logo || p.name) || []
-  const PARTNERS_PER_PAGE = 5
-  const partnerPages = Math.ceil(partnerItems.length / PARTNERS_PER_PAGE)
-  const showcasePages = Math.ceil(showcaseImages.length / 2)
-  const visibleShowcase = showcaseImages.slice(showcaseSlide * 2, showcaseSlide * 2 + 2)
+  // Fade-in refs for sections
+  const heroRef = useFadeIn()
+  const catRef = useFadeIn()
+  const prodRef = useFadeIn()
+  const advRef = useFadeIn()
+  const saleRef = useFadeIn()
+  const aboutRef = useFadeIn()
+  const reviewRef = useFadeIn()
+  const ctaRef = useFadeIn()
 
+  // Hero image carousel
+  const heroImages = [heroBg1, heroBg2, heroBg3, heroBg4]
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+  // Auto-rotate images every 4 seconds
   useEffect(() => {
-    if (showcaseImages.length <= 2) return
-    const interval = setInterval(() => setShowcaseSlide(p => (p + 1) % Math.ceil(showcaseImages.length / 2)), 4000)
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length)
+    }, 4000)
     return () => clearInterval(interval)
-  }, [showcaseImages.length])
-
-  useEffect(() => {
-    if (partnerPages <= 1) return
-    const interval = setInterval(() => setPartnerSlide(p => (p + 1) % partnerPages), 3000)
-    return () => clearInterval(interval)
-  }, [partnerPages])
+  }, [])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-light-50">
       <Header />
 
-      {/* HERO */}
-      <section className="relative bg-[#1e3d69] h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] xl:h-[820px] overflow-hidden">
-        <div className="absolute inset-0">
-          {heroImages.map((image, index) => (
-            <div key={index} className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}>
-              <img src={image} alt="" className="w-full h-full object-cover" />
-            </div>
-          ))}
-        </div>
-        <div className="relative h-full flex items-center">
-          <div className="bg-[#1e3d69]/95 rounded-r-xl pt-5 px-5 pb-5 sm:pt-6 sm:px-6 sm:pb-6 md:pt-7 md:px-7 md:pb-7 lg:pt-9 lg:px-9 lg:pb-9 xl:pt-10 xl:px-10 xl:pb-10 w-full sm:w-[500px] md:w-[550px] lg:w-[600px] xl:w-[900px] flex flex-col justify-between h-auto">
-            <div>
-              <h2 className="text-[20px] sm:text-[28px] md:text-[36px] lg:text-[44px] xl:text-[48px] font-bold uppercase leading-tight">
-                <span className="bg-gradient-to-r from-[#6b7ff5] via-[#42ade2] to-[#83bf4f] bg-clip-text text-transparent">
-                  {hero.line1?.[language] || hero.line1?.uz || 'SANOAT EHTIYOT QISMLARI-'}
-                </span>
-              </h2>
-              <p className="text-[50px] sm:text-[52px] md:text-[64px] lg:text-[76px] xl:text-[130px] font-black text-white tracking-wide">
-                {hero.line2?.[language] || hero.line2?.uz || 'PNEUMAX'}
-              </p>
-              <p className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] xl:text-[48px] font-normal text-[#42ade2]">
-                {hero.line3?.[language] || hero.line3?.uz || 'Tez, ishonchli va hamyonbop.'}
-              </p>
-            </div>
-            <Link to="/catalog" onClick={() => window.scrollTo(0, 0)} className="bg-[#3563e9] text-white w-full py-3 sm:py-3.5 md:py-2 lg:py-3 rounded-lg font-semibold text-base sm:text-lg md:text-xl lg:text-2xl shadow-lg hover:bg-[#2952d1] transition-all hover:shadow-xl mt-5 sm:mt-6 md:mt-7 lg:mt-8 text-center block">
-              {hero.buttonText?.[language] || hero.buttonText?.uz || 'Buyurtma berish'}
-            </Link>
+      {/* ═══ HERO ═══ */}
+      <section ref={heroRef} className="fade-in-section visible relative w-full h-screen flex items-center overflow-hidden bg-gradient-to-br from-blue-50 via-white to-blue-50">
+        {/* Floating Decorative Icons */}
+        <div className="absolute inset-0 pointer-events-none hidden lg:block">
+          {/* Left Side - Top */}
+          <div className="absolute top-1/4 left-8 w-16 h-16 rounded-full bg-gradient-to-br from-accent-orange to-amber-600 flex items-center justify-center shadow-lg animate-float">
+            <Paintbrush size={28} className="text-white" strokeWidth={2} />
+          </div>
+          {/* Left Side - Middle */}
+          <div className="absolute top-1/2 left-12 w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary-600 flex items-center justify-center shadow-lg" style={{ animationDelay: '0.5s' }}>
+            <Wrench size={32} className="text-white" strokeWidth={2} />
+          </div>
+          {/* Left Side - Bottom */}
+          <div className="absolute bottom-24 left-16 w-18 h-18 rounded-full bg-gradient-to-br from-accent-blue to-blue-600 flex items-center justify-center shadow-lg animate-float" style={{ animationDelay: '1s' }}>
+            <Zap size={30} className="text-white" strokeWidth={2} />
+          </div>
+          {/* Right Side - Middle */}
+          <div className="absolute top-1/2 right-12 w-16 h-16 rounded-full bg-gradient-to-br from-accent-green to-green-600 flex items-center justify-center shadow-lg" style={{ animationDelay: '1.5s' }}>
+            <Droplets size={28} className="text-white" strokeWidth={2} />
+          </div>
+          {/* Right Side - Bottom */}
+          <div className="absolute bottom-32 right-20 w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary-700 flex items-center justify-center shadow-lg animate-float" style={{ animationDelay: '2s' }}>
+            <Lightbulb size={32} className="text-white" strokeWidth={2} />
+          </div>
+          {/* Bottom Center-Right */}
+          <div className="absolute bottom-20 right-1/3 w-16 h-16 rounded-full bg-gradient-to-br from-secondary to-secondary-600 flex items-center justify-center shadow-lg" style={{ animationDelay: '2.5s' }}>
+            <Hammer size={28} className="text-white" strokeWidth={2} />
           </div>
         </div>
-      </section>
 
-      {/* KATEGORIYALAR */}
-      {categories.length > 0 && (
-        <section className="py-10 md:py-14 lg:py-16 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto" data-aos="fade-up">
-          <div className="flex items-end justify-between mb-6 md:mb-10">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Text Content */}
             <div>
-              <p className="text-[#3563e9] font-semibold text-sm md:text-base mb-1 tracking-wide uppercase">
-                {language === 'uz' ? 'Mahsulotlarimiz' : language === 'ru' ? 'Наши продукты' : 'Our Products'}
+              <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-dark-900 leading-[0.95] mb-5 tracking-tight">
+                Всё для стройки и ремонта <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">в одном месте</span>
+              </h1>
+              <p className="text-dark-600 text-base md:text-lg mb-8 max-w-xl leading-relaxed font-medium">
+                Профессиональные инструменты, материалы и сантехника с доставкой по всему Узбекистану
               </p>
-              <h3 className="text-[22px] sm:text-[28px] md:text-[34px] lg:text-[40px] font-black text-[#1e3d69] uppercase leading-tight">
-                {language === 'uz' ? 'Kategoriyalar' : language === 'ru' ? 'Категории' : 'Categories'}
-              </h3>
-            </div>
-            <Link
-              to="/catalog"
-              onClick={() => window.scrollTo(0, 0)}
-              className="flex items-center gap-2 text-[#3563e9] font-semibold text-sm md:text-base hover:underline shrink-0"
-            >
-              {language === 'uz' ? 'Barchasi' : language === 'ru' ? 'Все' : 'Browse all'}
-              <span className="text-lg">→</span>
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5">
-            {categories.map((cat, i) => {
-              const gradients = [
-                'from-[#6b7ff5] to-[#4f5fd4]',
-                'from-[#42ade2] to-[#2185c5]',
-                'from-[#f5826b] to-[#d45f40]',
-                'from-[#7cc97f] to-[#4ea85a]',
-                'from-[#c97cc9] to-[#a050a0]',
-                'from-[#f5c46b] to-[#d49f40]',
-                'from-[#6bc9c9] to-[#40a0a0]',
-                'from-[#f57c9a] to-[#d44068]',
-              ]
-              const grad = gradients[i % gradients.length]
-              const name = cat.name?.[language] || cat.name?.uz || cat.name?.ru || ''
-              return (
-                <Link
-                  key={cat._id}
-                  to={`/catalog?category=${cat._id}`}
-                  onClick={() => window.scrollTo(0, 0)}
-                  className="group flex flex-col items-center bg-white border border-gray-100 rounded-2xl p-4 md:p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                  data-aos="zoom-in"
-                  data-aos-delay={Math.min(i * 60, 360)}
-                >
-                  <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center mb-3 md:mb-4 overflow-hidden shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                    {cat.image
-                      ? <img src={cat.image} alt={name} className="w-full h-full object-cover" />
-                      : <span className="text-white text-2xl md:text-3xl font-black select-none">{name.charAt(0).toUpperCase()}</span>
-                    }
-                  </div>
-                  <p className="text-center text-xs sm:text-sm font-semibold text-gray-800 group-hover:text-[#3563e9] transition-colors leading-snug line-clamp-2">{name}</p>
+              <div className="flex flex-wrap gap-4">
+                <Link to="/catalog" className="btn-primary text-base px-8 py-3.5 rounded-3xl hover:scale-105 transition-transform">
+                  Перейти в каталог <ArrowRight size={18} className="ml-1" />
                 </Link>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* FEATURES */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-[#f5f7fa]" data-aos="fade-up">
-        <div className="max-w-[1200px] mx-auto">
-          <h3 className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] font-bold text-[#1e3d69] text-center mb-2 md:mb-4 uppercase">
-            {features.title?.[language] || features.title?.uz || 'GLOBAL HAMKORLIK, KAFOLATLANGAN SIFAT VA'}
-          </h3>
-          <h4 className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] font-bold text-[#1e3d69] text-center mb-8 md:mb-16 uppercase">
-            {features.subtitle?.[language] || features.subtitle?.uz || "PROFESSIONAL TA'MINOT."}
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
-            {(featureItems.length > 0 ? featureItems : [
-              { title: { uz: "To'g'ridan To'g'ri IMPORT", ru: 'Прямой ИМПОРТ', en: 'Direct IMPORT' }, description: { uz: "Ehtiyot Qismlari Ishlab Chiqaruvchilardan Bevosita Olib Kiramiz!", ru: 'Закупаем запчасти напрямую у производителей!', en: 'We purchase spare parts directly from manufacturers!' }, icon: 'TrendingUp' },
-              { title: { uz: 'Maxsus Buyurtma Xizmati.', ru: 'Услуга специального заказа.', en: 'Custom Order Service.' }, description: { uz: "Omborda Bo'lmagan Texnologiya Ehtiyot Qismlarini Siz Uchun Keltrib Beramiz!", ru: 'Доставим технологические запчасти специально для вас!', en: 'We will bring technology spare parts especially for you!' }, icon: 'Truck' },
-              { title: { uz: 'Sifat kafolati', ru: 'Гарантия качества', en: 'Quality guarantee' }, description: { uz: 'Barcha mahsulotlar sifat sertifikatiga ega.', ru: 'Все товары имеют сертификат качества.', en: 'All products have a quality certificate.' }, icon: 'Package' },
-              { title: { uz: "Qulay to'lov", ru: 'Удобная оплата', en: 'Easy payment' }, description: { uz: "Turli to'lov usullari mavjud.", ru: 'Доступны различные способы оплаты.', en: 'Various payment methods available.' }, icon: 'CreditCard' },
-            ]).map((item, i) => {
-              const IconComp = ICON_MAP[item.icon] || Package
-              const title = typeof item.title === 'object' ? (item.title[language] || item.title.uz || '') : item.title
-              const desc = typeof item.description === 'object' ? (item.description[language] || item.description.uz || '') : item.description
-              return (
-                <div key={i} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-delay={i * 100}>
-                  <div className="w-16 h-16 bg-[#7c8ff5] rounded-full flex items-center justify-center mb-6">
-                    <IconComp size={32} className="text-white" />
-                  </div>
-                  <h5 className="text-xl font-bold text-gray-900 mb-3">{title}</h5>
-                  <p className="text-gray-600 leading-relaxed">{desc}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* TOP PRODUCTS */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto" data-aos="fade-up">
-        <h3 className="text-[20px] sm:text-[24px] md:text-[28px] lg:text-[32px] font-bold text-[#1e3d69] uppercase mb-6 md:mb-12">
-          {topProductsSection.title?.[language] || topProductsSection.title?.uz || 'Top mahsulotlar'}
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
-          {topProducts.map((product) => (
-            <div key={product._id} className="bg-white border border-gray-200 rounded-xl p-3 md:p-5 hover:shadow-xl transition-all group flex flex-col" data-aos="zoom-in">
-              <div className="bg-gray-50 h-32 sm:h-40 lg:h-48 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
-                {product.images?.[0]
-                  ? <img src={product.images[0]} alt={product.name?.ru || product.name?.uz} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
-                  : <Package size={48} className="text-gray-300" />}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                  <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-4 -rotate-12 scale-125 opacity-90">
-                    {[...Array(12)].map((_, i) => (
-                      <span key={i} className="text-sm md:text-base font-bold tracking-wider select-none whitespace-nowrap" style={{ color: 'rgba(30, 61, 105, 0.15)', textShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                        PNEUMAX
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col">
-                <h4 className="font-semibold text-gray-900 mb-1 text-xs sm:text-sm md:text-base line-clamp-2">{product.name?.[language] || product.name?.uz}</h4>
-                <div className="mb-3">
-                  <p className="text-[#3563e9] font-bold text-sm md:text-base">{(product.finalPrice || product.price).toLocaleString()} so'm</p>
-                  {product.hasDiscount && (
-                    <p className="text-xs text-gray-400 line-through">{product.price.toLocaleString()} so'm</p>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2 mt-auto">
-                  {product.isActive ? (
-                    <Link to={`/catalog/${product._id}`} onClick={() => window.scrollTo(0, 0)} className="w-full bg-[#3563e9] text-white py-2 rounded-lg font-medium hover:bg-[#2952d1] transition-colors text-xs md:text-sm text-center">
-                      {language === 'uz' ? 'Buyurtma berish' : language === 'ru' ? 'Заказать' : 'Order'}
-                    </Link>
-                  ) : (
-                    <div className="w-full bg-gray-300 text-gray-500 py-2 rounded-lg font-medium text-xs md:text-sm text-center cursor-not-allowed">
-                      {language === 'uz' ? 'Mavjud emas' : language === 'ru' ? 'Недоступно' : 'Unavailable'}
-                    </div>
-                  )}
-                  <Link to={`/catalog/${product._id}`} onClick={() => window.scrollTo(0, 0)} className="w-full bg-white border-2 border-[#3563e9] text-[#3563e9] py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors text-xs md:text-sm text-center">
-                    {language === 'uz' ? 'Batafsil' : language === 'ru' ? 'Подробнее' : 'Details'}
-                  </Link>
-                </div>
+                <Link to="/about" className="btn-ghost text-base px-8 py-3.5 rounded-3xl hover:scale-105 transition-transform">
+                  О нас
+                </Link>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* ADVANTAGES */}
-      <section className="bg-gradient-to-br from-[#1e3d69] via-[#2952d1] to-[#1e3d69] py-16 md:py-24 lg:py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40"></div>
-        <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20">
-          <div className="text-center mb-12 md:mb-20" data-aos="fade-down">
-            <h3 className="text-[28px] sm:text-[36px] md:text-[44px] lg:text-[52px] font-black text-white mb-4">
-              {advantages.title?.[language] || advantages.title?.uz || 'Преимущества'}
-            </h3>
-            <p className="text-white/90 text-base md:text-xl max-w-2xl mx-auto">
-              {advantages.subtitle?.[language] || advantages.subtitle?.uz || 'Почему клиенты выбирают именно нас?'}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 md:gap-8">
-            {(advantageItems.length > 0 ? advantageItems : [
-              { title: { uz: '20+', ru: '20+', en: '20+' }, subtitle: { uz: 'Yil tajriba', ru: 'Лет опыта', en: 'Years experience' }, icon: '🏆' },
-              { title: { uz: '5000+', ru: '5000+', en: '5000+' }, subtitle: { uz: 'Ehtiyot qismlar', ru: 'Запчастей', en: 'Spare parts' }, icon: '📦' },
-              { title: { uz: 'Buyurtma', ru: 'Заказ', en: 'Order' }, subtitle: { uz: 'Moslashuvchan', ru: 'Гибкий', en: 'Flexible' }, icon: '⚡' },
-              { title: { uz: 'Tez', ru: 'Быстро', en: 'Fast' }, subtitle: { uz: 'Yetkazib berish', ru: 'Доставка', en: 'Delivery' }, icon: '🚀' },
-              { title: { uz: "To'lov", ru: 'Оплата', en: 'Payment' }, subtitle: { uz: 'Turi ixtiyoriy', ru: 'Любой способ', en: 'Any method' }, icon: '💳' },
-            ]).map((item, index) => {
-              const title = typeof item.title === 'object' ? (item.title[language] || item.title.uz || '') : item.title
-              const subtitle = typeof item.subtitle === 'object' ? (item.subtitle[language] || item.subtitle.uz || '') : item.subtitle
-              return (
-                <div key={index} className="group" data-aos="fade-up" data-aos-delay={index * 100}>
-                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 md:p-8 text-center hover:bg-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl border border-white/20">
-                    <div className="text-5xl md:text-6xl mb-4">{item.icon || '✨'}</div>
-                    <h4 className="text-white text-2xl md:text-3xl lg:text-4xl font-black mb-2">{title}</h4>
-                    <p className="text-white/80 text-sm md:text-base font-medium">{subtitle}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* SHOWCASE */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto" data-aos="fade-up">
-        <h3 className="text-[18px] sm:text-[22px] md:text-[26px] lg:text-[32px] font-bold text-[#1e3d69] mb-2 md:mb-4 uppercase">
-          {showcase.title?.[language] || showcase.title?.uz || 'Ishonchli sanoat ehtiyot qismlari, qulay narxlarda va'}
-        </h3>
-        <h4 className="text-[18px] sm:text-[22px] md:text-[26px] lg:text-[32px] font-bold text-[#1e3d69] mb-6 md:mb-12 uppercase">
-          {showcase.subtitle?.[language] || showcase.subtitle?.uz || 'barqaror yetkazib berish tizimi.'}
-        </h4>
-        <p className="text-gray-600 mb-6 md:mb-12 max-w-3xl text-sm md:text-base">
-          {showcase.description?.[language] || showcase.description?.uz || "Sertifikatlangan sanoat ehtiyot qismlari, professional maslahat va barqaror ta'minot xizmati."}
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
-          {visibleShowcase.map((img, i) => (
-            <div key={i} data-aos="zoom-in" data-aos-delay={i * 200}>
-              <img src={img} alt="" className="w-full h-[300px] object-cover rounded-2xl transition-all duration-300 hover:scale-[1.02]" />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* BRANCHES */}
-      {branches.length > 0 && (
-        <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-white" data-aos="fade-up">
-          <h3 className="text-[22px] sm:text-[26px] md:text-[30px] lg:text-[36px] font-bold text-[#1e3d69] mb-6 md:mb-12 uppercase border-b-4 border-[#3563e9] inline-block pb-2">
-            {branchesSection.title?.[language] || branchesSection.title?.uz || (language === 'uz' ? 'Filiallarimiz' : language === 'ru' ? 'Наши филиалы' : 'Our Branches')}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-12">
-            {branches.map((branch) => (
-              <div key={branch._id} className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 col-span-1 sm:col-span-2" data-aos="fade-right">
-                <div className="rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow h-[250px] sm:h-[300px] lg:h-[350px]">
-                  <div className="bg-gradient-to-br from-[#1e3d69] to-[#2d5a8f] p-6 md:p-10 text-white h-full flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-lg md:text-2xl font-bold mb-3 md:mb-6">{branch.title?.[language] || branch.title?.uz}</h4>
-                      <div className="flex items-start gap-3 mb-4">
-                        <MapPin className="text-white mt-1" size={20} />
-                        <p className="text-sm opacity-90">{branch.fullAddress}</p>
-                      </div>
-                      {branch.phones?.[0] && (
-                        <div className="flex items-center gap-3">
-                          <Phone className="text-white" size={20} />
-                          <p>{branch.phones[0]}</p>
-                        </div>
-                      )}
-                    </div>
-                    <Link to="/branches" onClick={() => window.scrollTo(0, 0)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors mt-8 self-end">
-                      <span className="text-[#1e3d69] text-xl">→</span>
-                    </Link>
-                  </div>
-                </div>
-                <div className="rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow h-[250px] sm:h-[300px] lg:h-[350px]">
-                  {branch.image
-                    ? <img src={branch.image} alt={branch.title?.ru || branch.title?.uz} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full bg-gradient-to-br from-[#1e3d69] to-[#2d5a8f] flex items-center justify-center"><MapPin size={64} className="text-white/20" /></div>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* CONSULTATION / CUSTOM ORDER */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto">
-        <h3 className="text-[16px] sm:text-[20px] md:text-[24px] lg:text-[28px] font-semibold text-[#1e3d69] mb-2 md:mb-4">
-          {consultation.title?.[language] || consultation.title?.uz || "O'zingizga kerak maxsulot topilmadimi?"}
-        </h3>
-        <h4 className="text-[22px] sm:text-[28px] md:text-[34px] lg:text-[42px] font-bold text-[#1e3d69] mb-6 md:mb-12">
-          {consultation.subtitle?.[language] || consultation.subtitle?.uz || 'Maxsus buyurtma xizmatidan foydalaning'}
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12">
-          <div className="space-y-6">
-            <div>
-              <label className="block text-gray-700 mb-2">*{language === 'uz' ? 'Ismingiz' : language === 'ru' ? 'Ваше имя' : 'Your name'}</label>
-              <input type="text" value={consultForm.name} onChange={e => setConsultForm(f => ({ ...f, name: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#3563e9]" required />
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-2">*{language === 'uz' ? 'Telefon nomeringiz' : language === 'ru' ? 'Ваш номер телефона' : 'Your phone number'}</label>
-              <input
-                type="tel"
-                value={consultForm.phone}
-                onChange={e => setConsultForm({ ...consultForm, phone: formatPhoneNumber(e.target.value) })}
-                pattern="^(\+998[0-9]{9}|[0-9]{9})$"
-                placeholder="+998901234567"
-                title="Enter valid phone: +998XXXXXXXXX or XXXXXXXXX"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#3563e9]"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-2">*{language === 'uz' ? 'Tovar nomi, Modeli' : language === 'ru' ? 'Название товара, модель' : 'Product name, Model'}</label>
-              <input type="text" value={consultForm.productName} onChange={e => setConsultForm(f => ({ ...f, productName: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#3563e9]" required />
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-2">*{language === 'uz' ? 'Mahsulot miqdori' : language === 'ru' ? 'Количество товара' : 'Product quantity'}</label>
-              <input type="number" min="1" value={consultForm.quantity} onChange={e => setConsultForm(f => ({ ...f, quantity: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#3563e9]" required />
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-700 mb-2 text-sm"><span className="text-red-500">*</span> {language === 'uz' ? 'Mahsulot rasmini yuklang (Majburiy)' : language === 'ru' ? 'Фото товара (Обязательно)' : 'Product image (Required)'}</label>
-              <label className="border-2 border-dashed border-gray-300 rounded-xl h-[300px] flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100/50 cursor-pointer hover:border-[#3563e9] hover:bg-blue-50/30 transition-all overflow-hidden relative group">
-                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                  const file = e.target.files[0]
-                  if (!file) return
-                  if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return }
-                  setConsultImagePreview(URL.createObjectURL(file))
-                  setConsultUploading(true)
-                  try {
-                    const fd = new FormData(); fd.append('image', file)
-                    const res = await uploadAPI.single(fd)
-                    setConsultImage(res.data.url)
-                  } catch { setConsultImagePreview(null) }
-                  finally { setConsultUploading(false) }
-                }} />
-                {consultImagePreview
-                  ? <img src={consultImagePreview} className="w-full h-full object-cover" alt="preview" />
-                  : consultUploading
-                    ? <div className="animate-spin w-8 h-8 border-4 border-[#3563e9] border-t-transparent rounded-full" />
-                    : <div className="flex flex-col items-center gap-2">
-                      <svg className="w-10 h-10 text-gray-400 group-hover:text-[#3563e9] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p className="text-sm text-gray-500 group-hover:text-[#3563e9] transition-colors font-medium">{language === 'uz' ? 'Rasmni yuklash' : language === 'ru' ? 'Загрузить фото' : 'Upload image'}</p>
-                      <p className="text-xs text-gray-400">Max 5MB</p>
-                    </div>
-                }
-              </label>
-            </div>
-            {consultSubmitted ? (
-              <div className="bg-green-50 border border-green-200 rounded-xl py-4 text-center text-green-700 font-semibold">
-                {language === 'uz' ? 'Buyurtmangiz qabul qilindi!' : language === 'ru' ? 'Заявка принята!' : 'Request received!'}
-              </div>
-            ) : (
-              <button
-                disabled={consultSubmitting || !consultForm.name || !consultForm.phone || !consultForm.productName || !consultForm.quantity || !consultImage}
-                onClick={async () => {
-                  if (!consultForm.name || !consultForm.phone || !consultForm.productName || !consultForm.quantity || !consultImage) {
-                    alert(language === 'uz' ? 'Iltimos, barcha maydonlarni to\'ldiring va rasm yuklang' : language === 'ru' ? 'Пожалуйста, заполните все поля и загрузите фото' : 'Please fill all required fields and upload an image')
-                    return
-                  }
-                  const phoneRegex = /^(\+998[0-9]{9}|[0-9]{9,12})$/
-                  if (!phoneRegex.test(consultForm.phone)) {
-                    alert(language === 'uz' ? 'Telefon raqami noto\'g\'ri formatda. Masalan: +998977455874 yoki 987412587' : language === 'ru' ? 'Неверный формат телефона. Например: +998977455874 или 987412587' : 'Invalid phone format. Example: +998977455874 or 987412587')
-                    return
-                  }
-                  setConsultSubmitting(true)
-                  try {
-                    await requestsAPI.create({ name: consultForm.name, phone: consultForm.phone, productModel: consultForm.productName, productQuantity: consultForm.quantity, type: 'consultation', page: 'home', image: consultImage || undefined })
-                    setConsultSubmitted(true)
-                    setConsultForm({ name: '', phone: '', productName: '', quantity: '' })
-                    setConsultImage(null); setConsultImagePreview(null)
-                  } catch { }
-                  finally { setConsultSubmitting(false) }
-                }}
-                className="w-full bg-[#3563e9] text-white py-4 rounded-lg font-medium hover:bg-[#2952d1] transition-colors disabled:opacity-60"
-              >
-                {consultSubmitting ? '...' : consultation.buttonText?.[language] || consultation.buttonText?.uz || 'Yuborish'}
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* NEWS */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto bg-gray-50">
-        <h3 className="text-[24px] sm:text-[30px] md:text-[36px] lg:text-[42px] font-bold text-[#1e3d69] mb-6 md:mb-12">
-          {language === 'uz' ? 'Yangiliklar' : language === 'ru' ? 'Новости' : 'News'}
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
-          {blogs.map((blog) => (
-            <Link key={blog._id} to={`/blog/${blog._id}`} className="bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-shadow block">
-              <div className="bg-gradient-to-br from-[#1e3d69] to-[#3563e9] h-48 flex items-center justify-center overflow-hidden">
-                {blog.image
-                  ? <img src={blog.image} alt={blog.title?.[language]} className="w-full h-full object-cover" />
-                  : <Package size={64} className="text-white/40" />}
-              </div>
-              <div className="p-6">
-                <p className="text-sm text-gray-500 mb-2">{new Date(blog.createdAt).toLocaleDateString(language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ')}</p>
-                <h4 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">{blog.title?.[language] || blog.title?.uz}</h4>
-                <span className="text-[#3563e9] font-medium hover:underline">
-                  {language === 'uz' ? 'Batafsil →' : language === 'ru' ? 'Подробнее →' : 'Read more →'}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* PARTNERS */}
-      {partnerItems.length > 0 && (
-        <section className="py-10 md:py-16 bg-white border-t border-gray-100">
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20">
-            <h3 className="text-[22px] sm:text-[26px] md:text-[30px] font-bold text-[#1e3d69] mb-8 md:mb-12">
-              {partners.title?.[language] || partners.title?.uz || 'Hamkorlarimiz'}
-            </h3>
-            <div className="relative overflow-hidden">
-              <div
-                className="flex transition-transform duration-700 ease-in-out"
-                style={{ transform: `translateX(-${partnerSlide * 100}%)` }}
-              >
-                {Array.from({ length: partnerPages }).map((_, pageIdx) => (
-                  <div key={pageIdx} className="w-full flex-shrink-0 flex flex-wrap justify-center items-start gap-4 md:gap-5">
-                    {partnerItems.slice(pageIdx * PARTNERS_PER_PAGE, pageIdx * PARTNERS_PER_PAGE + PARTNERS_PER_PAGE).map((partner, i) => (
-                      <div key={i} className="w-[calc(50%-8px)] sm:w-[calc(33.333%-12px)] lg:w-[calc(20%-16px)] flex flex-col items-center justify-between gap-3 px-4 py-5 rounded-2xl border border-gray-100 hover:border-[#8a7dff]/40 hover:shadow-lg transition-all group bg-white">
-                        <div className="w-full h-24 flex items-center justify-center">
-                          {partner.logo
-                            ? <img src={partner.logo} alt={partner.name || ''} className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-300" />
-                            : <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-lg font-bold">{(partner.name || '?').charAt(0)}</div>
-                          }
-                        </div>
-                        {partner.name && (
-                          <p className="text-[11px] md:text-xs uppercase tracking-wide text-[#49566f] text-center font-medium line-clamp-2">{partner.name}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-            {partnerPages > 1 && (
-              <div className="flex justify-center gap-2 mt-6">
-                {Array.from({ length: partnerPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setPartnerSlide(i)}
-                    className={`transition-all rounded-full ${i === partnerSlide ? 'w-6 h-2 bg-[#3563e9]' : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'}`}
+            {/* Right: Image Carousel */}
+            <div className="hidden lg:block relative">
+              <div className="relative h-[500px] flex items-center justify-center">
+                {heroImages.map((img, index) => (
+                  <img
+                    key={index}
+                    src={img}
+                    alt={`СтройМаркет ${index + 1}`}
+                    className={`absolute w-full h-auto object-contain transition-all duration-1000 ${index === currentImageIndex
+                      ? 'opacity-100 scale-100 translate-x-0'
+                      : index === (currentImageIndex - 1 + heroImages.length) % heroImages.length
+                        ? 'opacity-0 scale-95 -translate-x-10'
+                        : 'opacity-0 scale-95 translate-x-10'
+                      }`}
                   />
                 ))}
               </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* FAQ */}
-      <section className="py-10 md:py-16 lg:py-20 px-4 sm:px-6 md:px-10 lg:px-20 max-w-[1440px] mx-auto">
-        <h3 className="text-[22px] sm:text-[28px] md:text-[34px] lg:text-[42px] font-bold text-[#1e3d69] mb-6 md:mb-12">{t.faq.title}</h3>
-        <div className="max-w-4xl">
-          {faqs.map((faq, index) => (
-            <div key={faq._id || index} className="border-b border-gray-200 last:border-0">
-              <button onClick={() => toggleFaq(index)} className="w-full flex items-center justify-between py-6 text-left hover:text-[#3563e9] transition-colors">
-                <span className="text-lg font-semibold text-gray-900">{faq.question?.[language] || faq.question?.uz}</span>
-                <ChevronDown className={`text-gray-500 transition-transform ${openFaq === index ? 'rotate-180' : ''}`} size={24} />
-              </button>
-              {openFaq === index && (
-                <div className="pb-6 text-gray-600 leading-relaxed">{faq.answer?.[language] || faq.answer?.uz}</div>
-              )}
+              {/* Carousel Indicators - Hidden */}
             </div>
-          ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ POPULAR CATEGORIES ═══ */}
+      <section ref={catRef} className="fade-in-section py-16 md:py-20 bg-white">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="font-heading text-3xl md:text-4xl text-dark-900 font-bold">Популярные категории</h2>
+              <p className="text-dark-600 text-sm mt-2">Выбирайте нужную категорию товаров</p>
+            </div>
+            <Link to="/catalog" className="hidden sm:flex items-center gap-2 px-6 py-3 border-2 border-dark-200 rounded-3xl text-dark-700 text-sm font-semibold hover:border-primary hover:text-primary transition-all">
+              Все товары
+            </Link>
+          </div>
+
+          {/* Categories Grid - 2 rows of 4 - High Level UI */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 max-w-5xl mx-auto">
+            {categories.map(({ id, name, Icon, count }) => (
+              <Link
+                key={id}
+                to={`/catalog?category=${id}`}
+                className="group relative flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-dark-200 bg-white transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:border-primary"
+                style={{ aspectRatio: '1 / 1.1' }}
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center bg-light-100 group-hover:bg-primary-50 group-hover:shadow-md transition-all duration-300 mb-3">
+                  <Icon size={24} className="text-dark-600 group-hover:text-primary transition-colors" strokeWidth={1.5} />
+                </div>
+                <div className="flex flex-col items-center">
+                  <h3 className="text-dark-900 text-xs sm:text-sm font-bold text-center whitespace-nowrap">{name}</h3>
+                  <span className="text-dark-400 text-[10px] sm:text-xs font-medium mt-1">{count} товаров</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ POPULAR PRODUCTS ═══ */}
+      <section ref={prodRef} className="fade-in-section py-16 md:py-20 bg-white">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="font-heading text-3xl md:text-4xl text-dark-900 font-bold">Популярные товары</h2>
+              <p className="text-dark-600 text-sm mt-2">Лучшие предложения месяца</p>
+            </div>
+            <Link to="/catalog" className="hidden sm:flex items-center gap-2 px-6 py-3 border-2 border-dark-200 rounded-3xl text-dark-700 text-sm font-semibold hover:border-primary hover:text-primary transition-all">
+              Все товары
+            </Link>
+          </div>
+
+          {/* 4 Column Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+            {productsToShow.slice(0, 8).map((product) => (
+              <ProductCard key={product._id} product={product} onAdd={handleAddToCart} />
+            ))}
+          </div>
+
+          <Link to="/catalog" className="lg:hidden flex items-center justify-center gap-2 mt-8 text-primary text-sm font-bold">
+            Все товары <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
+
+      {/* ═══ ADVANTAGES ═══ */}
+      <section ref={advRef} className="fade-in-section py-16 md:py-20 bg-white border-y border-dark-100">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="section-title text-center mb-3">Наши преимущества</h2>
+          <p className="section-subtitle text-center mb-12">Почему выбирают нас</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {advantages.map(({ Icon, title, desc }, i) => (
+              <div key={i} className="flex flex-col items-center text-center p-6 rounded-2xl bg-gradient-to-br from-light-50 to-white border border-dark-100 hover:shadow-soft transition-all duration-300 group">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-all shadow-soft">
+                  <Icon size={28} className="text-white" />
+                </div>
+                <h3 className="text-dark-900 font-bold text-base mb-2">{title}</h3>
+                <p className="text-dark-600 text-sm leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ SALE SECTION ═══ */}
+      <section ref={saleRef} className="fade-in-section py-16 md:py-24 relative overflow-hidden bg-gradient-to-br from-secondary-50 via-light-50 to-primary-50">
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 via-transparent to-primary/5" />
+        <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <span className="inline-block bg-gradient-to-r from-secondary to-secondary-600 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-3 shadow-soft">🔥 СКИДКИ</span>
+              <h2 className="section-title">Спец предложение</h2>
+            </div>
+            <Link to="/catalog?sale=true" className="hidden sm:flex items-center gap-2 text-primary text-sm font-bold hover:gap-3 transition-all">
+              Все товары <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          {/* Desktop Carousel */}
+          <div className="hidden lg:block relative">
+            <div className="overflow-hidden">
+              <div
+                className="flex gap-5 transition-transform duration-700 ease-out"
+                style={{ transform: `translateX(-${saleSlide * (100 / saleItemsPerView)}%)` }}
+              >
+                {saleProducts.map((product) => (
+                  <div key={product._id} className="flex-shrink-0" style={{ width: `calc(${100 / saleItemsPerView}% - ${(5 * (saleItemsPerView - 1)) / saleItemsPerView}px)` }}>
+                    <ProductCard product={product} onAdd={handleAddToCart} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Navigation Arrows */}
+            <button
+              onClick={() => handleSaleManualNav('prev')}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-12 h-12 rounded-full bg-white shadow-lg border border-dark-200 flex items-center justify-center text-dark-700 hover:text-primary hover:border-primary hover:shadow-xl transition-all z-10 group"
+            >
+              <ChevronLeft size={24} className="group-hover:-translate-x-0.5 transition-transform" />
+            </button>
+            <button
+              onClick={() => handleSaleManualNav('next')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-12 h-12 rounded-full bg-white shadow-lg border border-dark-200 flex items-center justify-center text-dark-700 hover:text-primary hover:border-primary hover:shadow-xl transition-all z-10 group"
+            >
+              <ChevronRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
+            </button>
+
+            {/* Slide Indicators */}
+            <div className="flex justify-center gap-2 mt-8">
+              {Array.from({ length: maxSaleSlide + 1 }).map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSaleSlide(idx)}
+                  className={`h-2 rounded-full transition-all ${idx === saleSlide
+                    ? 'w-8 bg-primary'
+                    : 'w-2 bg-dark-300 hover:bg-dark-400'
+                    }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile/Tablet Grid */}
+          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
+            {saleProducts.slice(0, 6).map((product) => (
+              <ProductCard key={product._id} product={product} onAdd={handleAddToCart} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ ABOUT COMPANY ═══ */}
+      <section ref={aboutRef} className="fade-in-section py-16 md:py-24 bg-white overflow-hidden">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative rounded-[2rem] border border-primary-100 bg-gradient-to-br from-white via-primary-50/40 to-secondary-50/30 p-6 md:p-8 lg:p-10 shadow-[0_20px_80px_rgba(59,130,246,0.08)]">
+            <div className="absolute -top-20 -right-16 w-56 h-56 bg-primary/10 blur-3xl rounded-full pointer-events-none" />
+            <div className="absolute -bottom-20 -left-16 w-56 h-56 bg-secondary/10 blur-3xl rounded-full pointer-events-none" />
+
+            <div className="relative grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-12 items-center">
+              <div>
+                <span className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-primary-600 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg shadow-primary/20 mb-5">
+                  О компании
+                </span>
+
+                <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl text-dark-900 font-bold leading-tight mb-5 max-w-2xl">
+                  СтройМаркет — надёжный партнёр для ремонта и строительства
+                </h2>
+
+                <p className="text-dark-600 text-sm md:text-base leading-7 mb-4 max-w-2xl">
+                  СтройМаркет — один из ведущих поставщиков строительных материалов в Узбекистане. Мы работаем с 2010 года и за это время заслужили доверие тысяч клиентов.
+                </p>
+                <p className="text-dark-600 text-sm md:text-base leading-7 mb-8 max-w-2xl">
+                  Наш ассортимент включает более 10 000 наименований товаров от ведущих мировых производителей. Мы гарантируем качество каждого товара и обеспечиваем быструю доставку по всей стране.
+                </p>
+
+                <div className="flex flex-wrap gap-3 mb-8">
+                  <div className="px-4 py-2 rounded-full bg-white border border-dark-100 text-dark-700 text-sm font-semibold shadow-sm">
+                    Сертифицированные товары
+                  </div>
+                  <div className="px-4 py-2 rounded-full bg-white border border-dark-100 text-dark-700 text-sm font-semibold shadow-sm">
+                    Официальные поставщики
+                  </div>
+                  <div className="px-4 py-2 rounded-full bg-white border border-dark-100 text-dark-700 text-sm font-semibold shadow-sm">
+                    Доставка по Узбекистану
+                  </div>
+                </div>
+
+                <Link to="/about" className="group inline-flex items-center gap-3 px-7 py-4 rounded-2xl bg-gradient-to-r from-primary to-primary-600 text-white text-sm md:text-base font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all duration-300">
+                  <span>Узнать больше</span>
+                  <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center group-hover:translate-x-1 transition-transform duration-300">
+                    <ArrowRight size={16} />
+                  </span>
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 md:gap-5">
+                {[
+                  { value: '16', suffix: '+', label: 'лет на рынке' },
+                  { value: '10', suffix: 'K+', label: 'товаров' },
+                  { value: '24', suffix: '/7', label: 'поддержка' },
+                  { value: '50', suffix: 'K+', label: 'довольных клиентов' },
+                ].map((stat, i) => (
+                  <div key={i} className="group rounded-[1.75rem] border border-white/80 bg-white/85 backdrop-blur-sm p-6 md:p-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.06)] hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(59,130,246,0.16)] transition-all duration-300">
+                    <div className="font-heading font-black text-4xl md:text-5xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-3 group-hover:scale-105 transition-transform duration-300">
+                      <AnimatedCounter target={stat.value} suffix={stat.suffix} />
+                    </div>
+                    <p className="text-dark-600 text-sm md:text-base font-semibold">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ REVIEWS ═══ */}
+      <section ref={reviewRef} className="fade-in-section py-16 md:py-24 bg-gradient-to-b from-light-50 to-white">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="section-title text-center mb-3">Отзывы наших клиентов</h2>
+          <p className="section-subtitle text-center mb-12">Нам доверяют тысячи людей по всему Узбекистану</p>
+
+          <div className="relative" onMouseEnter={pauseReviewAutoSlide} onMouseLeave={resumeReviewAutoSlide}>
+            <div className="hidden lg:block overflow-hidden">
+              <div
+                className="flex gap-5 transition-transform duration-700 ease-out"
+                style={{ transform: `translateX(-${reviewIdx * 25}%)` }}
+              >
+                {reviews.map((review) => (
+                  <div key={review.id} className="w-1/4 flex-shrink-0">
+                    <div className="bg-white border border-dark-200 rounded-2xl p-6 transition-all duration-300 hover:shadow-hover h-full">
+                      <div className="flex items-center gap-1 mb-4">
+                        {Array.from({ length: 5 }).map((_, s) => (
+                          <Star key={s} size={14} className={s < review.rating ? 'text-accent-orange fill-accent-orange' : 'text-dark-200'} />
+                        ))}
+                      </div>
+                      <p className="text-dark-700 text-sm leading-relaxed mb-5 line-clamp-3">{review.text}</p>
+                      <div>
+                        <p className="text-dark-900 text-sm font-bold">{review.author}</p>
+                        <p className="text-dark-500 text-xs mt-0.5">{review.date}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 lg:hidden">
+              {reviews.slice(0, 4).map((review) => (
+                <div key={review.id} className="bg-white border border-dark-200 rounded-2xl p-6 transition-all duration-300 hover:shadow-hover">
+                  <div className="flex items-center gap-1 mb-4">
+                    {Array.from({ length: 5 }).map((_, s) => (
+                      <Star key={s} size={14} className={s < review.rating ? 'text-accent-orange fill-accent-orange' : 'text-dark-200'} />
+                    ))}
+                  </div>
+                  <p className="text-dark-700 text-sm leading-relaxed mb-5 line-clamp-3">{review.text}</p>
+                  <div>
+                    <p className="text-dark-900 text-sm font-bold">{review.author}</p>
+                    <p className="text-dark-500 text-xs mt-0.5">{review.date}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ CTA BANNER ═══ */}
+      <section ref={ctaRef} className="fade-in-section">
+        <div className="bg-gradient-to-r from-primary via-primary-600 to-secondary py-14 md:py-20 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.08),transparent_50%)]" />
+          <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="font-heading text-3xl md:text-5xl text-white tracking-tight mb-4 font-bold">
+              Не нашли нужный товар?
+            </h2>
+            <p className="text-white/90 text-sm md:text-base mb-8 max-w-xl mx-auto font-medium">
+              Свяжитесь с нами, и наши специалисты помогут подобрать именно то, что вам нужно
+            </p>
+            <Link to="/contacts" className="btn-white text-base px-10 py-4 inline-block shadow-hover">
+              Связаться с нами
+            </Link>
+          </div>
         </div>
       </section>
 

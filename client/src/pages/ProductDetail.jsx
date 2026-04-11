@@ -1,358 +1,340 @@
 import { useState, useEffect } from 'react'
-import { useLanguage } from '../context/LanguageContext'
-import { Minus, Plus, Package, X, ShoppingCart, Check } from 'lucide-react'
+import { Minus, Plus, Package, X, ShoppingCart, Check, Star, Heart, Share2, Truck, Shield, ChevronRight } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
-import { productsAPI, requestsAPI } from '../services/api'
 import { useCart } from '../context/CartContext'
-import { formatPhoneNumber, isValidUzbekPhoneNumber } from '../utils/phoneValidation'
+import { mockAPI, mockReviews } from '../data/mockData'
 
 export default function ProductDetail() {
-  const { t, language } = useLanguage()
   const { addItem } = useCart()
   const { id } = useParams()
   const [product, setProduct] = useState(null)
   const [similarProducts, setSimilarProducts] = useState([])
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const [ordering, setOrdering] = useState(false)
-  const [ordered, setOrdered] = useState(false)
   const [addedToCart, setAddedToCart] = useState(false)
-  const [showOrderModal, setShowOrderModal] = useState(false)
-  const [orderName, setOrderName] = useState('')
-  const [orderPhone, setOrderPhone] = useState('')
-  const [consultName2, setConsultName2] = useState('')
-  const [consultPhone2, setConsultPhone2] = useState('')
-  const [consult2Submitting, setConsult2Submitting] = useState(false)
-  const [consult2Submitted, setConsult2Submitted] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (id) {
-      productsAPI.getById(id).then(res => { setProduct(res.data); setSelectedImage(0) }).catch(() => { })
-      productsAPI.getAll({ active: 'true', limit: 20 }).then(res => {
+      setLoading(true)
+      mockAPI.products.getById(id).then(res => {
+        setProduct(res.data)
+        setSelectedImage(0)
+        setLoading(false)
+      }).catch(() => setLoading(false))
+
+      mockAPI.products.getAll({ limit: 20 }).then(res => {
         const all = (res.data?.products || []).filter(p => p._id !== id)
         setSimilarProducts(all.sort(() => Math.random() - 0.5).slice(0, 4))
-      }).catch(() => { })
+      })
     }
   }, [id])
 
-  if (!product) return (
-    <div className="min-h-screen bg-gray-50">
+  const handleAddToCart = () => {
+    addItem({ _id: product._id, name: product.name.ru, finalPrice: product.finalPrice, images: product.images })
+    setAddedToCart(true)
+    setTimeout(() => setAddedToCart(false), 2500)
+  }
+
+  if (loading || !product) return (
+    <div className="min-h-screen bg-light-50">
       <Header />
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20 py-20 text-center text-gray-400">Yuklanmoqda...</div>
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="animate-pulse space-y-8">
+          <div className="h-8 bg-dark-200 rounded-xl w-1/3"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="h-96 bg-dark-200 rounded-2xl"></div>
+            <div className="space-y-4">
+              <div className="h-12 bg-dark-200 rounded-xl"></div>
+              <div className="h-8 bg-dark-200 rounded-xl w-2/3"></div>
+              <div className="h-32 bg-dark-200 rounded-xl"></div>
+            </div>
+          </div>
+        </div>
+      </div>
       <Footer />
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-light-50">
       <Header />
 
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-20 py-6 md:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mb-10 md:mb-16" data-aos="fade-up">
-          {/* Left Side - Product Images */}
-          <div className="flex gap-3 md:gap-4">
-            <div className="flex flex-col gap-2 md:gap-4">
-              {(product.images?.length ? product.images : ['placeholder']).map((img, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`w-16 h-16 md:w-24 md:h-24 border-2 rounded-lg overflow-hidden ${selectedImage === index ? 'border-[#3563e9]' : 'border-gray-200'}`}
-                >
-                  {img !== 'placeholder'
-                    ? <img src={img} alt={`Product ${index + 1}`} className="w-full h-full object-contain" />
-                    : <div className="w-full h-full bg-gray-100 flex items-center justify-center"><Package size={24} className="text-gray-300" /></div>}
-                </button>
-              ))}
-            </div>
-            <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-8 flex items-center justify-center relative overflow-hidden">
-              {product.images?.[selectedImage]
-                ? <img src={product.images[selectedImage]} alt={product.name?.[language]} className="w-full h-auto object-contain" />
-                : <Package size={120} className="text-gray-200" />}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-5 -rotate-12 scale-125 opacity-90">
-                  {[...Array(16)].map((_, i) => (
-                    <span key={i} className="text-base md:text-xl font-bold tracking-wider select-none whitespace-nowrap" style={{ color: 'rgba(30, 61, 105, 0.15)', textShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                      PNEUMAX
-                    </span>
-                  ))}
+      {/* Breadcrumbs */}
+      <div className="bg-white border-b border-dark-100">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center gap-2 text-sm text-dark-500">
+            <Link to="/" className="hover:text-primary transition-colors">Главная</Link>
+            <ChevronRight size={14} />
+            <Link to="/catalog" className="hover:text-primary transition-colors">Каталог</Link>
+            <ChevronRight size={14} />
+            <span className="text-dark-900 font-medium">{product.name.ru}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 mb-12">
+          {/* Left: Image Gallery */}
+          <div className="space-y-4">
+            <div className="relative bg-white border border-dark-200 rounded-2xl p-8 aspect-square flex items-center justify-center group overflow-hidden">
+              {product.hasDiscount && (
+                <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-accent-orange to-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                  -{product.discountPercent}%
                 </div>
-              </div>
+              )}
+              {product.isNew && (
+                <div className="absolute top-4 right-4 z-10 bg-gradient-to-r from-primary to-primary-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                  NEW
+                </div>
+              )}
+              {product.images?.[selectedImage] ? (
+                <img
+                  src={product.images[selectedImage]}
+                  alt={product.name.ru}
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                />
+              ) : (
+                <Package size={120} className="text-dark-200" />
+              )}
             </div>
+            {product.images?.length > 1 && (
+              <div className="grid grid-cols-4 gap-3">
+                {product.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedImage(idx)}
+                    className={`aspect-square rounded-xl border-2 overflow-hidden transition-all ${selectedImage === idx
+                      ? 'border-primary shadow-lg scale-105'
+                      : 'border-dark-200 hover:border-primary/50'
+                      }`}
+                  >
+                    <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Right Side - Product Details */}
+          {/* Right: Product Info */}
           <div>
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-[#1e3d69] mb-2">
-              {product.name?.[language] || product.name?.uz}
+            <h1 className="font-heading text-3xl md:text-4xl text-dark-900 font-bold mb-4">
+              {product.name.ru}
             </h1>
-            <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
-              <span className="text-xl md:text-2xl lg:text-3xl font-bold text-[#1e3d69]">
-                {(product.finalPrice || product.price).toLocaleString()} so'm
+
+            {/* Rating & Reviews */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    size={18}
+                    className={i < Math.floor(product.rating) ? 'fill-amber-400 text-amber-400' : 'text-dark-300'}
+                  />
+                ))}
+              </div>
+              <span className="text-dark-600 text-sm">
+                {product.rating.toFixed(1)} ({product.reviewCount} отзывов)
               </span>
-              {product.hasDiscount && (
-                <span className="text-base md:text-xl text-gray-400 line-through">{product.price.toLocaleString()} so'm</span>
+              {product.inStock && (
+                <span className="text-accent-green text-sm font-medium flex items-center gap-1">
+                  <Check size={16} /> В наличии
+                </span>
               )}
             </div>
 
+            {/* Price */}
+            <div className="bg-light-50 border border-dark-200 rounded-2xl p-6 mb-6">
+              <div className="flex items-baseline gap-4 mb-2">
+                <span className="font-heading text-4xl text-dark-900 font-bold">
+                  {product.finalPrice.toLocaleString()} сум
+                </span>
+                {product.hasDiscount && (
+                  <span className="text-xl text-dark-400 line-through">
+                    {product.price.toLocaleString()} сум
+                  </span>
+                )}
+              </div>
+              {product.hasDiscount && (
+                <p className="text-accent-green text-sm font-medium">
+                  Вы экономите {(product.price - product.finalPrice).toLocaleString()} сум
+                </p>
+              )}
+            </div>
+
+            {/* Quick Specs */}
             {product.specifications?.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  {language === 'uz' ? 'Texnik xususiyatlar' : language === 'ru' ? 'Технические характеристики' : 'Specifications'}
-                </h3>
-                <div className="space-y-2">
+              <div className="bg-white border border-dark-200 rounded-2xl p-6 mb-6">
+                <h3 className="font-bold text-dark-900 mb-4">Основные характеристики</h3>
+                <div className="space-y-3">
                   {product.specifications.map((spec, i) => (
-                    <div key={i} className="flex gap-2 text-sm">
-                      <span className="font-medium text-gray-700">{spec.key?.[language] || spec.key?.uz}:</span>
-                      <span className="text-gray-600">{spec.value?.[language] || spec.value?.uz}</span>
+                    <div key={i} className="flex justify-between text-sm border-b border-dark-100 pb-2 last:border-0">
+                      <span className="text-dark-600">{spec.label.ru}</span>
+                      <span className="font-medium text-dark-900">{spec.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Quantity + Order */}
-            <div className="space-y-3 mb-2">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
+            {/* Quantity & Actions */}
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center gap-4">
+                <span className="text-dark-700 font-medium">Количество:</span>
+                <div className="flex items-center border-2 border-dark-300 rounded-xl overflow-hidden">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-11 h-11 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+                    className="w-12 h-12 flex items-center justify-center text-dark-700 hover:bg-light-50 transition-colors"
                   >
-                    <Minus size={18} />
+                    <Minus size={20} />
                   </button>
                   <input
                     type="number"
                     value={quantity}
                     onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-14 text-center border-x border-gray-300 py-2.5 font-semibold text-gray-900 focus:outline-none"
+                    className="w-16 text-center border-x-2 border-dark-300 py-3 font-bold text-dark-900 focus:outline-none"
                   />
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="w-11 h-11 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+                    className="w-12 h-12 flex items-center justify-center text-dark-700 hover:bg-light-50 transition-colors"
                   >
-                    <Plus size={18} />
+                    <Plus size={20} />
                   </button>
                 </div>
-                {ordered ? (
-                  <div className="flex-1 bg-green-50 border border-green-200 text-green-700 py-3 rounded-xl font-semibold text-center text-sm">
-                    ✓ {language === 'uz' ? 'Qabul qilindi!' : language === 'ru' ? 'Принято!' : 'Received!'}
-                  </div>
+              </div>
+
+              <button
+                onClick={handleAddToCart}
+                className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${addedToCart
+                  ? 'bg-accent-green text-white'
+                  : 'bg-gradient-to-r from-primary to-primary-600 text-white hover:shadow-hover hover:scale-[1.02] active:scale-[0.98]'
+                  }`}
+              >
+                {addedToCart ? (
+                  <><Check size={20} /> Добавлено в корзину</>
                 ) : (
-                  <button
-                    onClick={() => setShowOrderModal(true)}
-                    disabled={ordering}
-                    className="flex-1 bg-[#3563e9] text-white py-3 rounded-xl font-bold text-base hover:bg-[#2952d1] transition-colors shadow-md hover:shadow-lg disabled:opacity-60"
-                  >
-                    {language === 'uz' ? 'Buyurtma berish' : language === 'ru' ? 'Заказать' : 'Order Now'}
-                  </button>
+                  <><ShoppingCart size={20} /> Добавить в корзину</>
                 )}
-                <button
-                  onClick={() => {
-                    addItem(product, quantity)
-                    setAddedToCart(true)
-                    setTimeout(() => setAddedToCart(false), 2000)
-                  }}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all ${addedToCart
-                    ? 'border-green-500 bg-green-50 text-green-600'
-                    : 'border-[#1e3d69] text-[#1e3d69] hover:bg-[#1e3d69] hover:text-white'
-                    }`}
-                >
-                  {addedToCart
-                    ? <><Check size={18} /> {language === 'ru' ? 'Добавлено' : language === 'en' ? 'Added' : 'Qo\'shildi'}</>
-                    : <><ShoppingCart size={18} /> {language === 'ru' ? 'В корзину' : language === 'en' ? 'Add to Cart' : 'Savatga'}</>}
+              </button>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button className="flex items-center justify-center gap-2 py-3 border-2 border-dark-300 rounded-xl text-dark-700 font-medium hover:border-primary hover:text-primary transition-colors">
+                  <Heart size={20} /> В избранное
+                </button>
+                <button className="flex items-center justify-center gap-2 py-3 border-2 border-dark-300 rounded-xl text-dark-700 font-medium hover:border-primary hover:text-primary transition-colors">
+                  <Share2 size={20} /> Поделиться
                 </button>
               </div>
             </div>
+
+            {/* Trust Badges */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-4 bg-light-50 rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Truck size={20} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-dark-900 font-bold text-sm">Быстрая доставка</p>
+                  <p className="text-dark-500 text-xs">За 24 часа</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-light-50 rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-accent-green/10 flex items-center justify-center shrink-0">
+                  <Shield size={20} className="text-accent-green" />
+                </div>
+                <div>
+                  <p className="text-dark-900 font-bold text-sm">Гарантия качества</p>
+                  <p className="text-dark-500 text-xs">Официальная</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Product Description */}
-        <div className="bg-white rounded-2xl p-8 mb-16" data-aos="fade-up">
-          <h2 className="text-2xl font-bold text-[#1e3d69] mb-4">
-            {language === 'uz' ? 'Mahsulot tavsifi' : language === 'ru' ? 'Описание товара' : 'Product Description'}
-          </h2>
-          <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-            {product.description?.[language] || product.description?.uz || '-'}
+        {/* Description */}
+        <div className="bg-white rounded-2xl p-8 mb-8">
+          <h2 className="text-2xl font-bold text-dark-900 mb-4">Описание</h2>
+          <div className="prose max-w-none">
+            <p className="text-dark-700 leading-relaxed">
+              {product.description?.ru || 'Описание товара будет добавлено позже.'}
+            </p>
           </div>
         </div>
+
+        {/* Specifications */}
+        {product.specifications && product.specifications.length > 0 && (
+          <div className="bg-white rounded-2xl p-8 mb-12">
+            <h2 className="text-2xl font-bold text-dark-900 mb-6">Характеристики</h2>
+            <div className="space-y-3">
+              {product.specifications.map((spec, i) => (
+                <div key={i} className="flex justify-between py-3 border-b border-dark-100 last:border-0">
+                  <span className="text-dark-600 font-medium">{spec.label.ru}</span>
+                  <span className="text-dark-900 font-bold">{spec.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Similar Products */}
-        <div className="mb-10 md:mb-16">
-          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-[#1e3d69] mb-5 md:mb-8 uppercase">
-            {language === 'uz' && 'TAFSIYA QILINADI'}
-            {language === 'ru' && 'РЕКОМЕНДУЕМЫЕ'}
-            {language === 'en' && 'RECOMMENDED'}
-          </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-            {similarProducts.map((sim) => (
-              <div key={sim._id} className="bg-white border border-gray-200 rounded-xl p-3 md:p-5 hover:shadow-xl transition-all group flex flex-col" data-aos="zoom-in">
-                <div className="bg-gray-50 h-32 sm:h-40 lg:h-48 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
-                  {sim.images?.[0]
-                    ? <img src={sim.images[0]} alt={sim.name?.[language]} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
-                    : <Package size={48} className="text-gray-200" />}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-5 -rotate-12 scale-125 opacity-90">
-                      {[...Array(16)].map((_, i) => (
-                        <span key={i} className="text-base md:text-xl font-bold tracking-wider select-none whitespace-nowrap" style={{ color: 'rgba(30, 61, 105, 0.15)', textShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                          PNEUMAX
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-1 flex flex-col">
-                  <h4 className="font-semibold text-gray-900 mb-1 text-xs sm:text-sm md:text-base line-clamp-2">{sim.name?.[language] || sim.name?.uz}</h4>
-                  <div className="mb-3">
-                    <p className="text-[#3563e9] font-bold text-sm md:text-base">{(sim.finalPrice || sim.price).toLocaleString()} so'm</p>
+        {similarProducts.length > 0 && (
+          <div className="mb-12">
+            <h2 className="font-heading text-3xl text-dark-900 font-bold mb-8">Похожие товары</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {similarProducts.map((sim) => (
+                <Link
+                  key={sim._id}
+                  to={`/catalog/${sim._id}`}
+                  onClick={() => window.scrollTo(0, 0)}
+                  className="group bg-white border border-dark-200 rounded-2xl overflow-hidden hover:shadow-hover hover:-translate-y-1 transition-all duration-300"
+                >
+                  <div className="relative aspect-square bg-light-50 flex items-center justify-center p-4">
                     {sim.hasDiscount && (
-                      <p className="text-xs text-gray-400 line-through">{sim.price.toLocaleString()} so'm</p>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 mt-auto">
-                    {sim.isActive ? (
-                      <Link to={`/catalog/${sim._id}`} onClick={() => window.scrollTo(0, 0)} className="w-full bg-[#3563e9] text-white py-2 rounded-lg font-medium hover:bg-[#2952d1] transition-colors text-xs md:text-sm text-center">
-                        {language === 'uz' ? 'Buyurtma berish' : language === 'ru' ? 'Заказать' : 'Order'}
-                      </Link>
-                    ) : (
-                      <div className="w-full bg-gray-300 text-gray-500 py-2 rounded-lg font-medium text-xs md:text-sm text-center cursor-not-allowed">
-                        {language === 'uz' ? 'Mavjud emas' : language === 'ru' ? 'Недоступно' : 'Unavailable'}
+                      <div className="absolute top-2 left-2 bg-accent-orange text-white text-xs font-bold px-2 py-1 rounded-full">
+                        -{sim.discountPercent}%
                       </div>
                     )}
-                    <Link to={`/catalog/${sim._id}`} onClick={() => window.scrollTo(0, 0)} className="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors text-xs md:text-sm text-center">
-                      {language === 'uz' ? 'Batafsil' : language === 'ru' ? 'Подробнее' : 'Details'}
-                    </Link>
+                    {sim.images?.[0] ? (
+                      <img
+                        src={sim.images[0]}
+                        alt={sim.name.ru}
+                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <Package size={64} className="text-dark-200" />
+                    )}
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Xoniroq Buyurtma Bering */}
-        <div className="bg-white rounded-2xl p-6 md:p-12">
-          <h2 className="text-xl md:text-2xl font-bold text-[#1e3d69] mb-2">
-            {language === 'uz' && 'Xoniroq Buyurtma Bering'}
-            {language === 'ru' && 'Закажите Сейчас'}
-            {language === 'en' && 'Order Now'}
-          </h2>
-          <p className="text-gray-600 mb-8">
-            {language === 'uz' && 'Formani to\'ldiring va biz sizga tez orada aloqaga chiqamiz. Narxni xisoblab beramiz.'}
-            {language === 'ru' && 'Заполните форму и мы свяжемся с вами в ближайшее время. Рассчитаем цену.'}
-            {language === 'en' && 'Fill out the form and we will contact you soon. We will calculate the price.'}
-          </p>
-          <div className="flex flex-col sm:flex-row items-end gap-3 md:gap-4">
-            <div className="flex-1 w-full">
-              <input
-                type="text"
-                value={consultName2}
-                onChange={e => setConsultName2(e.target.value)}
-                placeholder={language === 'uz' ? 'Ismingizni kiriting' : language === 'ru' ? 'Введите ваше имя' : 'Enter your name'}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#3563e9]"
-              />
+                  <div className="p-4">
+                    <h3 className="font-medium text-dark-900 text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                      {sim.name.ru}
+                    </h3>
+                    <div className="flex items-center gap-1 mb-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={12}
+                          className={i < Math.floor(sim.rating) ? 'fill-amber-400 text-amber-400' : 'text-dark-300'}
+                        />
+                      ))}
+                      <span className="text-dark-500 text-xs ml-1">({sim.reviewCount})</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-bold text-dark-900">{sim.finalPrice.toLocaleString()} сум</span>
+                      {sim.hasDiscount && (
+                        <span className="text-xs text-dark-400 line-through">{sim.price.toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
-            <div className="flex-1 w-full">
-              <input
-                type="tel"
-                value={consultPhone2}
-                onChange={e => setConsultPhone2(formatPhoneNumber(e.target.value))}
-                placeholder="+998901234567"
-                title="Enter valid phone: +998XXXXXXXXX or XXXXXXXXX"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#3563e9]"
-              />
-            </div>
-            {consult2Submitted ? (
-              <div className="w-full sm:w-auto bg-green-50 border border-green-200 text-green-700 px-8 py-3 rounded-xl font-semibold text-center">
-                {language === 'uz' ? 'Qabul qilindi!' : language === 'ru' ? 'Принято!' : 'Received!'}
-              </div>
-            ) : (
-              <button
-                onClick={async () => {
-                  if (!consultPhone2 || !isValidUzbekPhoneNumber(consultPhone2)) {
-                    alert(language === 'ru' ? 'Введите корректный номер телефона' : language === 'en' ? 'Enter valid phone number' : 'To\'g\'ri telefon raqamini kiriting')
-                    return
-                  }
-                  setConsult2Submitting(true)
-                  try {
-                    await requestsAPI.create({ name: consultName2, phone: consultPhone2, type: 'consultation', page: 'product-detail', comment: `Product: ${product.name?.uz || ''}` })
-                    setConsult2Submitted(true); setConsultName2(''); setConsultPhone2('')
-                  } catch { }
-                  finally { setConsult2Submitting(false) }
-                }}
-                disabled={consult2Submitting || !consultPhone2}
-                className="w-full sm:w-auto bg-[#10b981] text-white px-8 md:px-12 py-3 rounded-xl font-semibold hover:bg-[#059669] transition-colors shadow-lg disabled:opacity-60"
-              >
-                {consult2Submitting ? '...' : language === 'uz' ? 'Konsultatsiya olish' : language === 'ru' ? 'Получить консультацию' : 'Get consultation'}
-              </button>
-            )}
           </div>
-        </div>
+        )}
       </div>
 
       <Footer />
-
-      {/* Order Modal */}
-      {showOrderModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
-            <div className="flex items-center justify-between p-5 border-b">
-              <h2 className="text-lg font-bold text-[#1e3d69]">
-                {language === 'uz' ? 'Buyurtma berish' : language === 'ru' ? 'Оформить заказ' : 'Place Order'}
-              </h2>
-              <button onClick={() => setShowOrderModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="bg-blue-50 rounded-xl p-3 text-sm text-[#1e3d69] font-medium">
-                {product.name?.[language] || product.name?.uz} &times; {quantity}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">*{language === 'uz' ? 'Ismingiz' : language === 'ru' ? 'Ваше имя' : 'Your name'}</label>
-                <input type="text" value={orderName} onChange={e => setOrderName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#3563e9]" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">*{language === 'uz' ? 'Telefon raqamingiz' : language === 'ru' ? 'Ваш номер телефона' : 'Your phone number'}</label>
-                <input type="tel" value={orderPhone} onChange={e => setOrderPhone(formatPhoneNumber(e.target.value))}
-                  placeholder="+998901234567"
-                  title="Enter valid phone: +998XXXXXXXXX or XXXXXXXXX"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#3563e9]" />
-              </div>
-              <button
-                disabled={ordering || !orderPhone || !orderName}
-                onClick={async () => {
-                  if (!orderPhone || !orderName) return
-                  if (!isValidUzbekPhoneNumber(orderPhone)) {
-                    alert(language === 'ru' ? 'Введите корректный номер телефона' : language === 'en' ? 'Enter valid phone number' : 'To\'g\'ri telefon raqamini kiriting')
-                    return
-                  }
-                  setOrdering(true)
-                  try {
-                    await requestsAPI.create({
-                      name: orderName,
-                      phone: orderPhone,
-                      productModel: product.name?.[language] || product.name?.uz,
-                      productQuantity: String(quantity),
-                      type: 'consultation',
-                      page: 'product-detail',
-                    })
-                    setOrdered(true)
-                    setShowOrderModal(false)
-                    setOrderName('')
-                    setOrderPhone('')
-                  } catch { }
-                  finally { setOrdering(false) }
-                }}
-                className="w-full bg-[#3563e9] text-white py-3 rounded-xl font-semibold hover:bg-[#2952d1] transition-colors disabled:opacity-60"
-              >
-                {ordering ? '...' : language === 'uz' ? 'Buyurtmani yuborish' : language === 'ru' ? 'Отправить заказ' : 'Submit Order'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

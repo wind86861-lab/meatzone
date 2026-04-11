@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { analyticsAPI } from '../services/api'
-import { 
-  Users, 
-  DollarSign, 
-  Calendar, 
-  Wrench, 
+import {
+  Users,
+  DollarSign,
+  Calendar,
+  Wrench,
   AlertTriangle,
-  TrendingUp 
+  TrendingUp
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
       name: "Today's Appointments",
       value: data?.summary?.todayAppointments || 0,
       icon: Calendar,
-      color: 'bg-purple-500',
+      color: 'bg-blue-500',
     },
     {
       name: 'Pending Services',
@@ -72,7 +72,7 @@ export default function Dashboard() {
       name: 'Total Revenue',
       value: `$${(data?.summary?.totalRevenue || 0).toLocaleString()}`,
       icon: TrendingUp,
-      color: 'bg-indigo-500',
+      color: 'bg-blue-600',
     },
   ]
 
@@ -136,11 +136,10 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-gray-900">${service.totalCost}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      service.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      service.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
+                    <span className={`text-xs px-2 py-1 rounded-full ${service.status === 'completed' ? 'bg-green-100 text-green-700' :
+                        service.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                      }`}>
                       {service.status}
                     </span>
                   </div>

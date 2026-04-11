@@ -17,6 +17,7 @@ import {
   ShoppingBag
 } from 'lucide-react'
 import { useState } from 'react'
+import NotificationBell from './NotificationBell'
 
 const navigation = [
   { name: 'Главная', href: '/admin', icon: LayoutDashboard },
@@ -52,12 +53,15 @@ export default function Layout() {
           </div>
           <span className="font-bold text-xl">PneuMax</span>
         </div>
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-lg hover:bg-gray-100"
-        >
-          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100"
+          >
+            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {sidebarOpen && (
@@ -73,14 +77,17 @@ export default function Layout() {
       >
         <div className="flex flex-col h-full">
           <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">P</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-xl">P</span>
+                </div>
+                <div>
+                  <h1 className="font-bold text-xl">PneuMax</h1>
+                  <p className="text-xs text-gray-500">Панель управления</p>
+                </div>
               </div>
-              <div>
-                <h1 className="font-bold text-xl">PneuMax</h1>
-                <p className="text-xs text-gray-500">Панель управления</p>
-              </div>
+              <NotificationBell />
             </div>
           </div>
 
