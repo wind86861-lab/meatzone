@@ -58,8 +58,8 @@ app.use(helmet({
 app.use((req, res, next) => {
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com",
-    "script-src-elem 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com",
+    "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://telegram.org",
+    "script-src-elem 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://telegram.org",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob: https: http:",

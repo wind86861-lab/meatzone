@@ -153,15 +153,8 @@ function createBot() {
     var token = ctx.message.text.split(' ')[1];
 
     if (!token) {
-      return ctx.reply(
-        '👋 Добро пожаловать в *PneuMax*!\n\nЧтобы оформить заказ, выберите товары на сайте и нажмите «Оформить заказ».',
-        {
-          parse_mode: 'Markdown',
-          ...Markup.inlineKeyboard([
-            [Markup.button.url('🛒 Перейти на сайт', process.env.SITE_URL || 'https://pneumax.uz')],
-          ]),
-        }
-      );
+      // Silent — no message when user just opens bot without order token
+      return;
     }
 
     try {
