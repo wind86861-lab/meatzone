@@ -36,6 +36,17 @@ router.post('/create', submitLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Items are required' });
     }
 
+    // Validate all productIds are valid ObjectIds before any DB query
+    const mongoose = require('mongoose');
+    for (const item of items) {
+      if (!mongoose.Types.ObjectId.isValid(item.productId)) {
+        return res.status(400).json({
+          message: `Invalid product ID: "${item.productId}". Please clear your cart and add products again.`,
+          code: 'INVALID_PRODUCT_ID',
+        });
+      }
+    }
+
     // Check if user is premium
     let isPremiumUser = false;
     if (userId) {

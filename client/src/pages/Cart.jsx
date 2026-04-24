@@ -65,8 +65,17 @@ export default function Cart() {
       setOrderId(res.data.order?._id || '')
       clearCart()
       setSubmitted(true)
-    } catch {
-      setError(language === 'ru' ? 'Ошибка при отправке. Попробуйте снова.' : 'Error. Try again.')
+    } catch (err) {
+      const code = err.response?.data?.code
+      if (code === 'INVALID_PRODUCT_ID') {
+        setError(language === 'ru'
+          ? 'Корзина содержит устаревшие товары. Очистите корзину и добавьте товары заново.'
+          : language === 'en'
+            ? 'Cart contains outdated items. Please clear cart and add products again.'
+            : 'Savatda eskirgan mahsulotlar bor. Savatni tozalab, qayta qo\'shing.')
+      } else {
+        setError(language === 'ru' ? 'Ошибка при отправке. Попробуйте снова.' : 'Error. Try again.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -273,7 +282,19 @@ export default function Cart() {
                           </div>
                         </div>
 
-                        {error && <p className="text-secondary-500 text-sm mb-3 font-medium">{error}</p>}
+                        {error && (
+                          <div className="mb-3">
+                            <p className="text-secondary-500 text-sm font-medium">{error}</p>
+                            {error.includes('устаревш') || error.includes('outdated') || error.includes('eskirgan') ? (
+                              <button
+                                onClick={() => { clearCart(); setError('') }}
+                                className="mt-2 text-xs text-white bg-secondary-500 hover:bg-secondary-600 px-3 py-1.5 rounded-lg transition-colors"
+                              >
+                                {language === 'ru' ? 'Очистить корзину' : language === 'en' ? 'Clear cart' : 'Savatni tozalash'}
+                              </button>
+                            ) : null}
+                          </div>
+                        )}
 
                         <button
                           onClick={handleCheckout}

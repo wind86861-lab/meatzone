@@ -45,47 +45,34 @@ process.on('unhandledRejection', (reason) => {
 const isHttps = process.env.HTTPS === 'true' || process.env.SITE_URL?.startsWith('https');
 app.use(helmet({
   crossOriginResourcePolicy: false,
-  // Only send HSTS when actually running HTTPS — on plain HTTP it breaks the site
+  // COOP requires HTTPS to be useful — disable on HTTP to avoid browser warnings
+  crossOriginOpenerPolicy: isHttps ? { policy: 'same-origin' } : false,
+  // HSTS only makes sense over HTTPS
   hsts: isHttps ? { maxAge: 15552000, includeSubDomains: true } : false,
-  contentSecurityPolicy: {
-    directives: {
-      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      // Remove upgrade-insecure-requests — breaks HTTP deployments (browser tries to load assets over HTTPS)
-      "upgrade-insecure-requests": isHttps ? [] : null,
-      "img-src": ["'self'", "data:", "blob:", "https:", "http:"],
-      "frame-src": ["'self'", "https://www.google.com", "https://maps.google.com", "https://maps.googleapis.com"],
-      "script-src": ["'self'", "'unsafe-inline'", "https://maps.googleapis.com", "https://maps.gstatic.com"],
-      "script-src-elem": ["'self'", "'unsafe-inline'", "https://maps.googleapis.com", "https://maps.gstatic.com"],
-      "connect-src": ["'self'", "https://maps.googleapis.com", "https://maps.gstatic.com", "https://*.googleapis.com"],
-      "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maps.googleapis.com"],
-      "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
-      "worker-src": ["'self'", "blob:"],
-    },
-    // Helmet merges directives — filter out null values
-    ...(isHttps ? {} : {}),
-  },
+  // Origin-Agent-Cluster requires consistent HTTPS context — disable on HTTP
+  originAgentCluster: isHttps,
+  contentSecurityPolicy: false, // We set it manually below
 }));
 
-// Remove upgrade-insecure-requests header entirely on HTTP to prevent browser asset blocking
-if (!isHttps) {
-  app.use((req, res, next) => {
-    res.removeHeader('Content-Security-Policy');
-    res.setHeader('Content-Security-Policy',
-      "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com; " +
-      "script-src-elem 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com; " +
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com; " +
-      "font-src 'self' data: https://fonts.gstatic.com; " +
-      "img-src 'self' data: blob: https: http:; " +
-      "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.googleapis.com; " +
-      "frame-src 'self' https://www.google.com https://maps.google.com https://maps.googleapis.com; " +
-      "worker-src 'self' blob:; " +
-      "base-uri 'self'; " +
-      "form-action 'self';"
-    );
-    next();
-  });
-}
+// Set Content-Security-Policy manually — never include upgrade-insecure-requests on HTTP
+app.use((req, res, next) => {
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com",
+    "script-src-elem 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https: http:",
+    "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.googleapis.com",
+    "frame-src 'self' https://www.google.com https://maps.google.com https://maps.googleapis.com",
+    "worker-src 'self' blob:",
+    "base-uri 'self'",
+    "form-action 'self'",
+    ...(isHttps ? ["upgrade-insecure-requests"] : []),
+  ].join('; ');
+  res.setHeader('Content-Security-Policy', csp);
+  next();
+});
 
 // CORS – restrict to known origins in production
 const allowedOrigins = process.env.ALLOWED_ORIGINS
