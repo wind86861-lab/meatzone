@@ -9,7 +9,6 @@ import {
   ArrowRight,
   Users,
   Activity,
-  Crown,
   TrendingUp,
   BarChart3,
   MapPin,
@@ -57,7 +56,7 @@ export default function AdminDashboard() {
   const mainCards = [
     { name: 'Заказы', value: s.totalOrders || 0, sub: `${s.newOrders || 0} новых`, icon: ShoppingBag, color: 'from-blue-500 to-blue-600', link: '/admin/orders' },
     { name: 'Выручка (месяц)', value: `${fmt(s.monthlyRevenue)} сум`, sub: `Всего: ${fmt(s.totalRevenue)} сум`, icon: DollarSign, color: 'from-emerald-500 to-emerald-600', link: '/admin/orders' },
-    { name: 'Пользователи', value: s.totalUsers || 0, sub: `${s.premiumUsers || 0} premium`, icon: Users, color: 'from-violet-500 to-violet-600', link: '/admin/users' },
+    { name: 'Пользователи', value: s.totalUsers || 0, sub: 'всего', icon: Users, color: 'from-violet-500 to-violet-600', link: '/admin/users' },
     { name: 'Средний чек', value: `${fmt(s.avgOrderValue)} сум`, sub: `Сегодня: ${fmt(s.todayRevenue)} сум`, icon: TrendingUp, color: 'from-orange-500 to-orange-600', link: '/admin/orders' },
   ]
 
@@ -112,7 +111,7 @@ export default function AdminDashboard() {
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full flex flex-col items-center justify-end h-40">
-                    {rev > 0 && <span className="text-[10px] text-gray-500 mb-1">{(rev / 1000000).toFixed(1)}M</span>}
+                    {false && (<span className="text-[10px] text-gray-500 mb-1">{(rev / 1000000).toFixed(1)}M</span>}
                     <div className={`w-full max-w-[32px] rounded-t-lg transition-all ${rev > 0 ? 'bg-gradient-to-t from-emerald-500 to-emerald-400' : 'bg-gray-100'}`} style={{ height: `${Math.max(h, 4)}%` }} />
                   </div>
                   <span className="text-[10px] text-gray-500">{MONTH_NAMES[i]}</span>
@@ -177,27 +176,16 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Premium vs Regular + Payment methods */}
+        {/* Payment methods */}
         <div className="bg-white rounded-2xl shadow-sm border p-5">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3"><Crown size={16} className="text-amber-500" /> Статистика</h2>
+          <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3"><CreditCard size={16} className="text-blue-600" /> Оплата</h2>
           <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Premium заказы</span>
-              <span className="font-bold text-amber-600">{data?.premiumVsRegular?.premium || 0}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Обычные заказы</span>
-              <span className="font-bold text-gray-900">{data?.premiumVsRegular?.regular || 0}</span>
-            </div>
-            <div className="border-t pt-3 mt-2">
-              <p className="text-xs text-gray-500 mb-2 flex items-center gap-1"><CreditCard size={12} /> Оплата:</p>
-              {(data?.ordersByPayment || []).map((p, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-gray-600 uppercase">{p._id}</span>
-                  <span className="font-bold">{p.count}</span>
-                </div>
-              ))}
-            </div>
+            {(data?.ordersByPayment || []).map((p, i) => (
+              <div key={i} className="flex justify-between text-sm">
+                <span className="text-gray-600 uppercase">{p._id}</span>
+                <span className="font-bold">{p.count}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

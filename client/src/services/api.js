@@ -130,11 +130,11 @@ export const pageContentAPI = {
 
 export const uploadAPI = {
   single: (formData) => api.post('/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': undefined },
     timeout: 60000,
   }),
   multiple: (formData) => api.post('/upload/multiple', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': undefined },
     timeout: 60000,
   }),
 }

@@ -110,7 +110,6 @@ export default function AdminOrderDetail() {
               <div><span className="text-gray-500">Адрес:</span> <span className="font-medium">{order.address || '—'}</span></div>
               <div><span className="text-gray-500">Район:</span> <span className="font-medium">{order.district || '—'}</span></div>
               {order.telegramId && <div><span className="text-gray-500">Telegram:</span> <span className="font-medium">{order.telegramId}</span></div>}
-              {order.isPremiumOrder && <div><span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-bold">PREMIUM</span></div>}
             </div>
           </div>
 
@@ -141,7 +140,7 @@ export default function AdminOrderDetail() {
                   {item.image && <img src={item.image} alt="" className="w-12 h-12 object-contain rounded" />}
                   <div className="flex-1">
                     <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-xs text-gray-500">{fmt(item.price)} x {item.quantity}{item.isPremiumPrice ? ' (Premium)' : ''}</p>
+                    <p className="text-xs text-gray-500">{fmt(item.price)} x {item.quantity}</p>
                   </div>
                   <p className="font-bold text-sm">{fmt(item.price * item.quantity)} сум</p>
                 </div>
@@ -167,9 +166,9 @@ export default function AdminOrderDetail() {
                     <div className="flex items-center gap-3">
                       <span className="font-bold">{fmt(p.amount)} сум</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.status === 'paid' ? 'bg-green-100 text-green-700' :
-                          p.status === 'cancelled' ? 'bg-red-100 text-red-600' :
-                            p.status === 'refunded' ? 'bg-orange-100 text-orange-700' :
-                              'bg-gray-100 text-gray-600'
+                        p.status === 'cancelled' ? 'bg-red-100 text-red-600' :
+                          p.status === 'refunded' ? 'bg-orange-100 text-orange-700' :
+                            'bg-gray-100 text-gray-600'
                         }`}>{p.status}</span>
                     </div>
                   </div>

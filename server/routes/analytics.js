@@ -23,7 +23,6 @@ router.get('/dashboard', async (req, res) => {
       weeklyRevenue,
       todayRevenue,
       totalUsers,
-      premiumUsers,
       avgOrderValue,
     ] = await Promise.all([
       Order.countDocuments({ status: { $ne: 'cancelled' } }),
@@ -45,7 +44,6 @@ router.get('/dashboard', async (req, res) => {
         { $group: { _id: null, total: { $sum: '$totalPrice' } } },
       ]),
       User.countDocuments(),
-      User.countDocuments({ isPremium: true }),
       Order.aggregate([
         { $match: { status: { $ne: 'cancelled' } } },
         { $group: { _id: null, avg: { $avg: '$totalPrice' } } },
@@ -85,9 +83,8 @@ router.get('/dashboard', async (req, res) => {
       { $limit: 15 },
     ]);
 
-    // Premium vs regular orders
-    const premiumOrders = await Order.countDocuments({ isPremiumOrder: true, status: { $ne: 'cancelled' } });
-    const regularOrders = totalOrders - premiumOrders;
+    // Total products
+    const totalProducts = await Product.countDocuments({ isActive: true });
 
     // Orders by status
     const ordersByStatus = await Order.aggregate([
@@ -109,13 +106,12 @@ router.get('/dashboard', async (req, res) => {
         weeklyRevenue: weeklyRevenue[0]?.total || 0,
         todayRevenue: todayRevenue[0]?.total || 0,
         totalUsers,
-        premiumUsers,
+        totalProducts,
         avgOrderValue: Math.round(avgOrderValue[0]?.avg || 0),
       },
       revenueByMonth,
       topProducts,
       ordersByDistrict,
-      premiumVsRegular: { premium: premiumOrders, regular: regularOrders },
       ordersByStatus,
       ordersByPayment,
     });
