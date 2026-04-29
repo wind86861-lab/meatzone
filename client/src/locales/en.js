@@ -15,7 +15,7 @@ export const en = {
   },
   hero: {
     title: "INDUSTRIAL SPARE PARTS-",
-    subtitle: "PNEUMAX",
+    subtitle: "VIPSTROY",
     description: "Fast, reliable and affordable.",
     button: "Place Order"
   },

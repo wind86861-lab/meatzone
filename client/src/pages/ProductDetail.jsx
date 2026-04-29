@@ -1,340 +1,209 @@
-import { useState, useEffect } from 'react'
-import { Minus, Plus, Package, X, ShoppingCart, Check, Star, Heart, Share2, Truck, Shield, ChevronRight } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
-import Header from '../components/Header'
-import Footer from '../components/Footer'
-import { useCart } from '../context/CartContext'
-import { mockAPI, mockReviews } from '../data/mockData'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowLeft, ShoppingCart, Star, Minus, Plus, Heart } from 'lucide-react'
+import { TopBar } from '../components/layout/TopBar'
+import { Button, Badge, Chip, Skeleton } from '../components/ui'
+import { productsAPI } from '../services/api'
+import { useCart } from '../store/cartStore'
+import { formatSum, haptic, cn } from '../utils/format'
+
+const EMOJI_MAP = {
+  beef: '🥩', mutton: '🐑', chicken: '🍗', sausage: '🌭', ready: '🥘', frozen: '❄️',
+}
+
+function adaptProduct(p) {
+  const name = typeof p.name === 'string' ? p.name : (p.name?.uz || p.name?.ru || p.name?.en || 'Mahsulot')
+  const meta = p.stock ? `${p.stock} ta qoldi` : ''
+  const badge = p.discountPrice && p.price > p.discountPrice
+    ? { tone: 'red', label: `−${Math.round((1 - p.discountPrice / p.price) * 100)}%` }
+    : (p.isFeatured ? { tone: 'green', label: 'HIT' } : null)
+  return {
+    id: p._id || p.id,
+    name,
+    meta,
+    emoji: EMOJI_MAP[p.category?.slug || p.cat] || '🥩',
+    price: p.discountPrice || p.price,
+    old: p.discountPrice ? p.price : null,
+    cat: p.category?.slug || p.cat,
+    badge,
+    rating: p.rating || 4.5,
+    reviews: p.reviews || 12,
+    desc: typeof p.description === 'string' ? p.description : (p.description?.uz || p.description?.ru || p.description?.en || ''),
+  }
+}
 
 export default function ProductDetail() {
-  const { addItem } = useCart()
   const { id } = useParams()
+  const navigate = useNavigate()
+  const add = useCart(s => s.add)
+  const [qty, setQty] = useState(1)
+  const [liked, setLiked] = useState(false)
   const [product, setProduct] = useState(null)
-  const [similarProducts, setSimilarProducts] = useState([])
-  const [selectedImage, setSelectedImage] = useState(0)
-  const [quantity, setQuantity] = useState(1)
-  const [addedToCart, setAddedToCart] = useState(false)
+  const [related, setRelated] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (id) {
-      setLoading(true)
-      mockAPI.products.getById(id).then(res => {
-        setProduct(res.data)
-        setSelectedImage(0)
-        setLoading(false)
-      }).catch(() => setLoading(false))
-
-      mockAPI.products.getAll({ limit: 20 }).then(res => {
-        const all = (res.data?.products || []).filter(p => p._id !== id)
-        setSimilarProducts(all.sort(() => Math.random() - 0.5).slice(0, 4))
+    let mounted = true
+    setLoading(true)
+    productsAPI.getById(id).then(res => {
+      if (!mounted) return
+      const p = adaptProduct(res.data)
+      setProduct(p)
+      // Fetch related
+      productsAPI.getAll({ limit: 10 }).then(r => {
+        if (!mounted) return
+        const prods = (r.data.products || []).map(adaptProduct)
+        setRelated(prods.filter(x => x.cat === p.cat && x.id !== p.id).slice(0, 3))
       })
-    }
+      setLoading(false)
+    }).catch(() => setLoading(false))
+    return () => { mounted = false }
   }, [id])
 
-  const handleAddToCart = () => {
-    addItem({ _id: product._id, name: product.name.ru, finalPrice: product.finalPrice, images: product.images })
-    setAddedToCart(true)
-    setTimeout(() => setAddedToCart(false), 2500)
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col bg-bg">
+        <TopBar variant="plain" title="Mahsulot" onBack={() => navigate(-1)} />
+        <div className="px-4 pt-6 flex flex-col gap-4">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+        </div>
+      </div>
+    )
   }
 
-  if (loading || !product) return (
-    <div className="min-h-screen bg-light-50">
-      <Header />
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-dark-200 rounded-xl w-1/3"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div className="h-96 bg-dark-200 rounded-2xl"></div>
-            <div className="space-y-4">
-              <div className="h-12 bg-dark-200 rounded-xl"></div>
-              <div className="h-8 bg-dark-200 rounded-xl w-2/3"></div>
-              <div className="h-32 bg-dark-200 rounded-xl"></div>
-            </div>
-          </div>
-        </div>
+  if (!product) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col bg-bg">
+        <TopBar variant="plain" title="Mahsulot" onBack={() => navigate(-1)} />
+        <div className="flex-1 flex items-center justify-center text-ink-dim">Mahsulot topilmadi</div>
       </div>
-      <Footer />
-    </div>
-  )
+    )
+  }
+
+  const handleAdd = () => {
+    add(product, qty)
+    haptic('success')
+  }
 
   return (
-    <div className="min-h-screen bg-light-50">
-      <Header />
-
-      {/* Breadcrumbs */}
-      <div className="bg-white border-b border-dark-100">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-2 text-sm text-dark-500">
-            <Link to="/" className="hover:text-primary transition-colors">Главная</Link>
-            <ChevronRight size={14} />
-            <Link to="/catalog" className="hover:text-primary transition-colors">Каталог</Link>
-            <ChevronRight size={14} />
-            <span className="text-dark-900 font-medium">{product.name.ru}</span>
-          </div>
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="min-h-[100dvh] flex flex-col bg-bg"
+    >
+      {/* Hero image area */}
+      <div className="relative bg-bg-surface3 h-[40vh] flex items-center justify-center overflow-hidden">
+        <div className="text-[100px] drop-shadow-[0_8px_24px_rgba(0,0,0,.5)]">
+          {product.emoji}
         </div>
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/30 backdrop-blur border border-white/10 flex items-center justify-center text-white tap"
+        >
+          <ArrowLeft size={18} strokeWidth={2.4} />
+        </button>
+        <button
+          onClick={() => { setLiked(!liked); haptic('light') }}
+          className={cn(
+            "absolute top-4 right-4 w-9 h-9 rounded-full backdrop-blur border flex items-center justify-center tap",
+            liked ? "bg-primary border-primary text-white" : "bg-black/30 border-white/10 text-white/70"
+          )}
+        >
+          <Heart size={16} strokeWidth={2.4} fill={liked ? "currentColor" : "none"} />
+        </button>
+        {product.badge && (
+          <div className="absolute bottom-4 left-4">
+            <Badge tone={product.badge.tone}>{product.badge.label}</Badge>
+          </div>
+        )}
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 mb-12">
-          {/* Left: Image Gallery */}
-          <div className="space-y-4">
-            <div className="relative bg-white border border-dark-200 rounded-2xl p-8 aspect-square flex items-center justify-center group overflow-hidden">
-              {product.hasDiscount && (
-                <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-accent-orange to-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                  -{product.discountPercent}%
-                </div>
-              )}
-              {product.isNew && (
-                <div className="absolute top-4 right-4 z-10 bg-gradient-to-r from-primary to-primary-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                  NEW
-                </div>
-              )}
-              {product.images?.[selectedImage] ? (
-                <img
-                  src={product.images[selectedImage]}
-                  alt={product.name.ru}
-                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <Package size={120} className="text-dark-200" />
-              )}
-            </div>
-            {product.images?.length > 1 && (
-              <div className="grid grid-cols-4 gap-3">
-                {product.images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImage(idx)}
-                    className={`aspect-square rounded-xl border-2 overflow-hidden transition-all ${selectedImage === idx
-                      ? 'border-primary shadow-lg scale-105'
-                      : 'border-dark-200 hover:border-primary/50'
-                      }`}
-                  >
-                    <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
+      {/* Content */}
+      <div className="flex-1 px-4 pt-5 pb-28">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs text-ink-dim font-medium capitalize">{product.cat}</span>
+          <span className="text-ink-line">·</span>
+          <span className="text-xs text-ink-dim font-medium">{product.meta}</span>
+        </div>
+
+        <h1 className="font-display text-3xl tracking-wide text-ink mb-2">{product.name}</h1>
+
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-1">
+            <Star size={14} className="text-amber fill-amber" />
+            <span className="text-sm font-bold text-ink">{product.rating}</span>
           </div>
+          <span className="text-xs text-ink-dim">({product.reviews} baho)</span>
+        </div>
 
-          {/* Right: Product Info */}
-          <div>
-            <h1 className="font-heading text-3xl md:text-4xl text-dark-900 font-bold mb-4">
-              {product.name.ru}
-            </h1>
-
-            {/* Rating & Reviews */}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    size={18}
-                    className={i < Math.floor(product.rating) ? 'fill-amber-400 text-amber-400' : 'text-dark-300'}
-                  />
-                ))}
-              </div>
-              <span className="text-dark-600 text-sm">
-                {product.rating.toFixed(1)} ({product.reviewCount} отзывов)
-              </span>
-              {product.inStock && (
-                <span className="text-accent-green text-sm font-medium flex items-center gap-1">
-                  <Check size={16} /> В наличии
-                </span>
-              )}
-            </div>
-
-            {/* Price */}
-            <div className="bg-light-50 border border-dark-200 rounded-2xl p-6 mb-6">
-              <div className="flex items-baseline gap-4 mb-2">
-                <span className="font-heading text-4xl text-dark-900 font-bold">
-                  {product.finalPrice.toLocaleString()} сум
-                </span>
-                {product.hasDiscount && (
-                  <span className="text-xl text-dark-400 line-through">
-                    {product.price.toLocaleString()} сум
-                  </span>
-                )}
-              </div>
-              {product.hasDiscount && (
-                <p className="text-accent-green text-sm font-medium">
-                  Вы экономите {(product.price - product.finalPrice).toLocaleString()} сум
-                </p>
-              )}
-            </div>
-
-            {/* Quick Specs */}
-            {product.specifications?.length > 0 && (
-              <div className="bg-white border border-dark-200 rounded-2xl p-6 mb-6">
-                <h3 className="font-bold text-dark-900 mb-4">Основные характеристики</h3>
-                <div className="space-y-3">
-                  {product.specifications.map((spec, i) => (
-                    <div key={i} className="flex justify-between text-sm border-b border-dark-100 pb-2 last:border-0">
-                      <span className="text-dark-600">{spec.label.ru}</span>
-                      <span className="font-medium text-dark-900">{spec.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Quantity & Actions */}
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center gap-4">
-                <span className="text-dark-700 font-medium">Количество:</span>
-                <div className="flex items-center border-2 border-dark-300 rounded-xl overflow-hidden">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-12 h-12 flex items-center justify-center text-dark-700 hover:bg-light-50 transition-colors"
-                  >
-                    <Minus size={20} />
-                  </button>
-                  <input
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-16 text-center border-x-2 border-dark-300 py-3 font-bold text-dark-900 focus:outline-none"
-                  />
-                  <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="w-12 h-12 flex items-center justify-center text-dark-700 hover:bg-light-50 transition-colors"
-                  >
-                    <Plus size={20} />
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={handleAddToCart}
-                className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${addedToCart
-                  ? 'bg-accent-green text-white'
-                  : 'bg-gradient-to-r from-primary to-primary-600 text-white hover:shadow-hover hover:scale-[1.02] active:scale-[0.98]'
-                  }`}
-              >
-                {addedToCart ? (
-                  <><Check size={20} /> Добавлено в корзину</>
-                ) : (
-                  <><ShoppingCart size={20} /> Добавить в корзину</>
-                )}
-              </button>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button className="flex items-center justify-center gap-2 py-3 border-2 border-dark-300 rounded-xl text-dark-700 font-medium hover:border-primary hover:text-primary transition-colors">
-                  <Heart size={20} /> В избранное
-                </button>
-                <button className="flex items-center justify-center gap-2 py-3 border-2 border-dark-300 rounded-xl text-dark-700 font-medium hover:border-primary hover:text-primary transition-colors">
-                  <Share2 size={20} /> Поделиться
-                </button>
-              </div>
-            </div>
-
-            {/* Trust Badges */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-4 bg-light-50 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Truck size={20} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-dark-900 font-bold text-sm">Быстрая доставка</p>
-                  <p className="text-dark-500 text-xs">За 24 часа</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-4 bg-light-50 rounded-xl">
-                <div className="w-10 h-10 rounded-full bg-accent-green/10 flex items-center justify-center shrink-0">
-                  <Shield size={20} className="text-accent-green" />
-                </div>
-                <div>
-                  <p className="text-dark-900 font-bold text-sm">Гарантия качества</p>
-                  <p className="text-dark-500 text-xs">Официальная</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="flex items-baseline gap-2 mb-5">
+          <div className="font-display text-4xl text-ink tabular">{formatSum(product.price)}</div>
+          {product.old && (
+            <div className="text-sm text-ink-dim line-through tabular">{formatSum(product.old)}</div>
+          )}
         </div>
 
         {/* Description */}
-        <div className="bg-white rounded-2xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-dark-900 mb-4">Описание</h2>
-          <div className="prose max-w-none">
-            <p className="text-dark-700 leading-relaxed">
-              {product.description?.ru || 'Описание товара будет добавлено позже.'}
-            </p>
+        <p className="text-sm text-ink-dim leading-relaxed mb-6">{product.desc}</p>
+
+        {/* Qty selector */}
+        <div className="flex items-center justify-between bg-bg-surface rounded-lg border border-ink-line p-3 mb-6">
+          <span className="text-sm font-bold text-ink">Miqdor</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setQty(Math.max(1, qty - 1))}
+              className="w-9 h-9 rounded-md bg-bg-surface3 border border-ink-line text-ink text-lg tap flex items-center justify-center"
+            >
+              <Minus size={16} />
+            </button>
+            <span className="min-w-[28px] text-center font-bold text-lg tabular">{qty}</span>
+            <button
+              onClick={() => setQty(qty + 1)}
+              className="w-9 h-9 rounded-md bg-bg-surface3 border border-ink-line text-ink text-lg tap flex items-center justify-center"
+            >
+              <Plus size={16} />
+            </button>
           </div>
         </div>
 
-        {/* Specifications */}
-        {product.specifications && product.specifications.length > 0 && (
-          <div className="bg-white rounded-2xl p-8 mb-12">
-            <h2 className="text-2xl font-bold text-dark-900 mb-6">Характеристики</h2>
-            <div className="space-y-3">
-              {product.specifications.map((spec, i) => (
-                <div key={i} className="flex justify-between py-3 border-b border-dark-100 last:border-0">
-                  <span className="text-dark-600 font-medium">{spec.label.ru}</span>
-                  <span className="text-dark-900 font-bold">{spec.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Similar Products */}
-        {similarProducts.length > 0 && (
-          <div className="mb-12">
-            <h2 className="font-heading text-3xl text-dark-900 font-bold mb-8">Похожие товары</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {similarProducts.map((sim) => (
-                <Link
-                  key={sim._id}
-                  to={`/catalog/${sim._id}`}
-                  onClick={() => window.scrollTo(0, 0)}
-                  className="group bg-white border border-dark-200 rounded-2xl overflow-hidden hover:shadow-hover hover:-translate-y-1 transition-all duration-300"
+        {/* Related */}
+        {related.length > 0 && (
+          <>
+            <h3 className="font-display text-lg text-ink mb-3">O'xshash mahsulotlar</h3>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+              {related.map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => { haptic('light'); navigate(`/product/${r.id}`) }}
+                  className="shrink-0 w-[120px] bg-bg-surface rounded-lg border border-ink-line p-2.5 text-left tap"
                 >
-                  <div className="relative aspect-square bg-light-50 flex items-center justify-center p-4">
-                    {sim.hasDiscount && (
-                      <div className="absolute top-2 left-2 bg-accent-orange text-white text-xs font-bold px-2 py-1 rounded-full">
-                        -{sim.discountPercent}%
-                      </div>
-                    )}
-                    {sim.images?.[0] ? (
-                      <img
-                        src={sim.images[0]}
-                        alt={sim.name.ru}
-                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <Package size={64} className="text-dark-200" />
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-medium text-dark-900 text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                      {sim.name.ru}
-                    </h3>
-                    <div className="flex items-center gap-1 mb-3">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={12}
-                          className={i < Math.floor(sim.rating) ? 'fill-amber-400 text-amber-400' : 'text-dark-300'}
-                        />
-                      ))}
-                      <span className="text-dark-500 text-xs ml-1">({sim.reviewCount})</span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-dark-900">{sim.finalPrice.toLocaleString()} сум</span>
-                      {sim.hasDiscount && (
-                        <span className="text-xs text-dark-400 line-through">{sim.price.toLocaleString()}</span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                  <div className="text-3xl mb-1.5">{r.emoji}</div>
+                  <div className="text-[11px] font-bold text-ink line-clamp-1">{r.name}</div>
+                  <div className="text-[11px] text-ink-dim mt-0.5 tabular">{formatSum(r.price)}</div>
+                </button>
               ))}
             </div>
-          </div>
+          </>
         )}
       </div>
 
-      <Footer />
-    </div>
+      {/* Sticky bottom bar */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-bg-surface/95 backdrop-blur-lg border-t border-ink-line px-4 py-3 pb-safe">
+        <div className="max-w-[480px] mx-auto flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-[11px] text-ink-dim">Jami</div>
+            <div className="font-display text-2xl text-ink tabular">{formatSum(product.price * qty)}</div>
+          </div>
+          <Button variant="primary" size="lg" className="flex-[1.5] gap-2" onClick={handleAdd}>
+            <ShoppingCart size={18} />
+            Savatga qo'shish
+          </Button>
+        </div>
+      </div>
+    </motion.div>
   )
 }

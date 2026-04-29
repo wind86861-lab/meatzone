@@ -1,31 +1,49 @@
 <!doctype html>
-<html lang="ru">
+<html lang="uz">
 
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>PneuMax — Шины и диски в Ташкенте</title>
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥩</text></svg>" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>MEATZONE — Premium go'sht do'koni · Toshkent</title>
   <meta name="description"
-    content="PneuMax — шины, диски и автозапчасти с доставкой по Узбекистану. Широкий ассортимент, быстрая доставка." />
-  <meta property="og:title" content="PneuMax — Шины и диски в Ташкенте" />
+    content="MEATZONE — Toshkent bo'ylab tabiiy mol, qo'y, tovuq go'shti yetkazib berish. Premium sifat, tez yetkazish." />
+  <meta property="og:title" content="MEATZONE — Premium go'sht do'koni" />
   <meta property="og:type" content="website" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#0D0907" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <!-- Telegram Mini App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    try {
+      if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+        if (window.Telegram.WebApp.setHeaderColor) window.Telegram.WebApp.setHeaderColor('#0D0907');
+        if (window.Telegram.WebApp.setBackgroundColor) window.Telegram.WebApp.setBackgroundColor('#0D0907');
+      }
+    } catch(e) { console.error('TG SDK init:', e) }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'DM Sans',sans-serif;background:#0D0907;color:#F5EDE8">
+      <div style="text-align:center">
+        <div style="font-size:48px;margin-bottom:8px">🥩</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:1px;color:#E8251A">MEATZONE</div>
+        <div style="width:32px;height:32px;border:3px solid rgba(255,180,150,.15);border-top-color:#E8251A;border-radius:50%;animation:spin .8s linear infinite;margin:16px auto 0"></div>
+      </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+  </div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 

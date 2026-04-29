@@ -1,7 +1,7 @@
 {
-  "name": "pneumax",
+  "name": "meatzone",
   "version": "1.0.0",
-  "description": "PneuMax - Tire and Automotive Service Management Platform",
+  "description": "MeatZone — Premium meat shop Telegram WebApp & management platform",
   "main": "server/index.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
@@ -13,10 +13,11 @@
     "install-all": "npm install && cd client && npm install"
   },
   "keywords": [
-    "tire",
-    "automotive",
-    "service",
-    "management"
+    "meat",
+    "telegram",
+    "webapp",
+    "ecommerce",
+    "delivery"
   ],
   "author": "",
   "license": "MIT",

@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const TelegramUser = require('../models/TelegramUser');
 const { protect, admin } = require('../middleware/auth');
 
 const generateToken = (id) => {
@@ -101,19 +102,22 @@ router.post('/admin/users/:id/premium', protect, admin, async (req, res) => {
     const { id } = req.params;
     const { isPremium, durationDays = 30 } = req.body;
 
-    const user = await User.findById(id);
+    // Try User model first, then TelegramUser
+    let user = await User.findById(id);
+    let isTg = false;
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      user = await TelegramUser.findById(id);
+      isTg = true;
     }
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     user.isPremium = isPremium;
     if (isPremium) {
-      // Set premium expiry date
       user.premiumExpiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
-      user.userType = 'premium';
+      if (!isTg) user.userType = 'premium';
     } else {
       user.premiumExpiresAt = null;
-      user.userType = 'regular';
+      if (!isTg) user.userType = 'regular';
     }
 
     await user.save();
@@ -122,11 +126,9 @@ router.post('/admin/users/:id/premium', protect, admin, async (req, res) => {
       message: isPremium ? 'Premium status granted' : 'Premium status revoked',
       user: {
         _id: user._id,
-        name: user.name,
-        email: user.email,
+        name: isTg ? (user.firstName || '') : (user.name || ''),
         isPremium: user.isPremium,
         premiumExpiresAt: user.premiumExpiresAt,
-        userType: user.userType,
       },
     });
   } catch (error) {
@@ -136,27 +138,118 @@ router.post('/admin/users/:id/premium', protect, admin, async (req, res) => {
 });
 
 /**
+ * PUT /api/admin/users/:id/role
+ * Change user role (admin, manager, customer)
+ * Body: { role: string }
+ */
+router.put('/admin/users/:id/role', protect, admin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const allowed = ['admin', 'manager', 'technician', 'customer'];
+    if (!allowed.includes(role)) {
+      return res.status(400).json({ message: `Invalid role. Allowed: ${allowed.join(', ')}` });
+    }
+
+    // Try User model first, then TelegramUser
+    let user = await User.findById(id);
+    let isTg = false;
+    if (!user) {
+      user = await TelegramUser.findById(id);
+      isTg = true;
+    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Prevent removing own admin role
+    if (!isTg && String(user._id) === String(req.user._id) && role !== 'admin') {
+      return res.status(400).json({ message: 'Cannot remove your own admin role' });
+    }
+
+    user.role = role;
+    await user.save();
+    res.json({
+      message: `Role changed to ${role}`,
+      user: { _id: user._id, name: isTg ? (user.firstName || '') : (user.name || ''), role: user.role },
+    });
+  } catch (error) {
+    console.error('Role update error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
  * GET /api/admin/users
- * Stage 1: Get all users with premium info
+ * Returns merged users from User + TelegramUser collections
  */
 router.get('/admin/users', protect, admin, async (req, res) => {
   try {
     const { isPremium, page = 1, limit = 20 } = req.query;
-    const query = {};
-    if (isPremium !== undefined) query.isPremium = isPremium === 'true';
+    const premFilter = isPremium !== undefined ? isPremium === 'true' : null;
 
-    const total = await User.countDocuments(query);
-    const users = await User.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+    // 1. Get all web-app users
+    const userQuery = {};
+    if (premFilter !== null) userQuery.isPremium = premFilter;
+    const webUsers = await User.find(userQuery).select('-password').sort({ createdAt: -1 }).lean();
+
+    // 2. Get all telegram bot users
+    const tgQuery = {};
+    if (premFilter !== null) tgQuery.isPremium = premFilter;
+    const tgUsers = await TelegramUser.find(tgQuery).sort({ createdAt: -1 }).lean();
+
+    // 3. Merge: index webUsers by telegramId for dedup
+    const seenTgIds = new Set();
+    const merged = [];
+
+    for (const u of webUsers) {
+      const row = {
+        _id: u._id,
+        source: 'web',
+        name: u.name || '',
+        email: u.email || '',
+        phone: u.phone || '',
+        role: u.role || 'customer',
+        isPremium: u.isPremium || false,
+        premiumExpiresAt: u.premiumExpiresAt || null,
+        telegramId: u.telegramId || '',
+        telegramUsername: u.telegramUsername || '',
+        isActive: u.isActive !== false,
+        createdAt: u.createdAt,
+      };
+      if (u.telegramId) seenTgIds.add(u.telegramId);
+      merged.push(row);
+    }
+
+    for (const t of tgUsers) {
+      if (seenTgIds.has(t.telegramId)) continue;
+      merged.push({
+        _id: t._id,
+        source: 'telegram',
+        name: [t.firstName, t.lastName].filter(Boolean).join(' ') || '',
+        email: '',
+        phone: t.phone || '',
+        role: t.role || 'customer',
+        isPremium: t.isPremium || false,
+        premiumExpiresAt: t.premiumExpiresAt || null,
+        telegramId: t.telegramId || '',
+        telegramUsername: t.username || '',
+        isActive: !t.isBanned,
+        createdAt: t.createdAt,
+      });
+    }
+
+    // 4. Sort by date desc
+    merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const total = merged.length;
+    const pg = parseInt(page);
+    const lim = parseInt(limit);
+    const paged = merged.slice((pg - 1) * lim, pg * lim);
 
     res.json({
-      users,
+      users: paged,
       total,
-      page: parseInt(page),
-      pages: Math.ceil(total / limit),
+      page: pg,
+      pages: Math.ceil(total / lim),
     });
   } catch (error) {
     console.error('Get users error:', error);

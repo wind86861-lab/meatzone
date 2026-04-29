@@ -96,6 +96,7 @@ const orderSchema = new mongoose.Schema({
 
   comment: { type: String, default: '' },
   adminNotes: { type: String, default: '' },
+  adminMessageId: { type: String, default: '' },
 
   // Stage 1: Token expiration (24 hours)
   tokenExpiresAt: {

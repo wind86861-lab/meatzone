@@ -15,7 +15,7 @@ export const ru = {
   },
   hero: {
     title: "ПРОМЫШЛЕННЫЕ ЗАПЧАСТИ-",
-    subtitle: "PNEUMAX",
+    subtitle: "VIPSTROY",
     description: "Быстро, надежно и доступно.",
     button: "Оформить заказ"
   },

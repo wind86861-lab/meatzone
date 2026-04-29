@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# PneuMax Deployment Script
-echo "🚀 Starting PneuMax deployment..."
+# VipStroy Deployment Script
+echo "🚀 Starting VipStroy deployment..."
 
 # Clone the repository
 echo "📥 Cloning repository from GitHub..."
-git clone https://github.com/wind86861-lab/pnemux.git PneuMax
+git clone https://github.com/wind86861-lab/pnemux.git VipStroy
 
 # Navigate to the project directory
-cd PneuMax
+cd VipStroy
 
 # Install server dependencies
 echo "📦 Installing server dependencies..."
@@ -29,7 +29,7 @@ echo "⚙️ Creating PM2 configuration..."
 cat > ecosystem.config.js << 'EOF'
 module.exports = {
   apps: [{
-    name: 'pneumax',
+    name: 'vipstroy',
     script: './server/index.js',
     cwd: './',
     instances: 1,
@@ -63,4 +63,4 @@ pm2 startup
 echo "✅ Deployment complete!"
 echo "🌐 Your application should be running on port 5000"
 echo "📊 Check status with: pm2 status"
-echo "📋 View logs with: pm2 logs pneumax"
+echo "📋 View logs with: pm2 logs vipstroy"

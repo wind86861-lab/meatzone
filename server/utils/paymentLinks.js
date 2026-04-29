@@ -34,7 +34,7 @@ function getClickLink(orderId, amountInSum) {
     'merchant_id=' + merchantId,
     'amount=' + amountInSum,
     'transaction_param=' + orderId,
-    'return_url=' + encodeURIComponent((process.env.SITE_URL || 'https://pneumax.uz') + '/cart?status=paid'),
+    'return_url=' + encodeURIComponent((process.env.SITE_URL || 'https://meatzone.uz') + '/cart?status=paid'),
   ];
 
   return baseUrl + '?' + params.join('&');

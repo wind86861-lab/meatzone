@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+
+const safeStorage = {
+  getItem: (key) => { try { return localStorage.getItem(key) } catch { return null } },
+  setItem: (key, val) => { try { localStorage.setItem(key, val) } catch { } },
+  removeItem: (key) => { try { localStorage.removeItem(key) } catch { } },
+}
 
 export const useAuthStore = create(
   persist(
@@ -39,7 +45,8 @@ export const useAuthStore = create(
       },
     }),
     {
-      name: 'pneumax-admin-auth',
+      name: 'meatzone-admin-auth',
+      storage: createJSONStorage(() => safeStorage),
     }
   )
 )

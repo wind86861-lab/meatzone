@@ -1,0 +1,422 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+body{font-family:var(--font-sans)}
+.top-tabs{display:flex;border-bottom:0.5px solid var(--color-border-tertiary)}
+.ttab{flex:1;padding:11px 6px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--color-text-secondary);border-bottom:2px solid transparent;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.ttab:hover:not(.active){background:var(--color-background-secondary)}
+.ttab.active{color:var(--color-text-primary);border-bottom-color:var(--color-text-primary)}
+.ticon{font-size:16px;line-height:1}
+.panel{display:none;padding:16px}
+.panel.active{display:block}
+.role-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;margin-bottom:14px}
+.badge-client{background:#E1F5EE;color:#085041}
+.badge-admin{background:#EEEDFE;color:#26215C}
+.badge-owner{background:#FAEEDA;color:#412402}
+.badge-operator{background:#E6F1FB;color:#042C53}
+.badge-courier{background:#FAECE7;color:#4A1B0C}
+.badge-system{background:#EAF3DE;color:#173404}
+.fn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.fn-grid{grid-template-columns:1fr}}
+.fn-card{border:0.5px solid var(--color-border-tertiary);border-radius:10px;overflow:hidden}
+.fn-head{padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--color-background-secondary)}
+.fn-head:hover{background:var(--color-background-tertiary)}
+.fn-title{font-size:12px;font-weight:500;color:var(--color-text-primary);display:flex;align-items:center;gap:6px}
+.fn-icon{font-size:14px;width:20px;text-align:center}
+.fn-tag{font-size:10px;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.tag-action{background:#E6F1FB;color:#042C53}
+.tag-view{background:#EAF3DE;color:#173404}
+.tag-notify{background:#FAEEDA;color:#412402}
+.tag-auto{background:#E1F5EE;color:#085041}
+.tag-control{background:#EEEDFE;color:#26215C}
+.tag-warn{background:#FAECE7;color:#4A1B0C}
+.fn-body{display:none;padding:10px 12px;border-top:0.5px solid var(--color-border-tertiary)}
+.fn-body.open{display:block}
+.fn-desc{font-size:11px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:8px}
+.fn-details{display:flex;flex-direction:column;gap:4px}
+.fn-row{display:flex;gap:8px;font-size:11px}
+.fn-key{color:var(--color-text-tertiary);min-width:75px;flex-shrink:0;font-size:10px}
+.fn-val{color:var(--color-text-primary);line-height:1.4}
+.pill{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px}
+.p-ok{background:#EAF3DE;color:#173404}
+.p-warn{background:#FAEEDA;color:#412402}
+.p-info{background:#E6F1FB;color:#042C53}
+.p-note{background:#EEEDFE;color:#26215C}
+.chev{font-size:10px;color:var(--color-text-tertiary);transition:transform .2s;flex-shrink:0}
+.chev.open{transform:rotate(180deg)}
+.section-title{font-size:10px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:.06em;text-transform:uppercase;margin:16px 0 8px}
+.section-title:first-child{margin-top:0}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat-card{background:var(--color-background-secondary);border-radius:8px;padding:10px;text-align:center}
+.stat-num{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.stat-label{font-size:10px;color:var(--color-text-tertiary);margin-top:2px}
+.flow-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.flow-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border:0.5px solid var(--color-border-tertiary);border-radius:8px;background:var(--color-background-primary)}
+.flow-num{width:20px;height:20px;border-radius:50%;background:var(--color-background-info);color:var(--color-text-info);font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.flow-text{font-size:12px;color:var(--color-text-primary);line-height:1.4}
+.flow-sub{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+</style>
+
+<h2 class="sr-only">MEATZONE telegram bot — barcha rollar va ularning funksiyalari</h2>
+
+<div class="top-tabs">
+  <button class="ttab active" onclick="switchTab('client')"><span class="ticon">🧑</span>Klient</button>
+  <button class="ttab" onclick="switchTab('admin')"><span class="ticon">🖥</span>Admin</button>
+  <button class="ttab" onclick="switchTab('operator')"><span class="ticon">🎧</span>Operator</button>
+  <button class="ttab" onclick="switchTab('courier')"><span class="ticon">🚚</span>Kuryer</button>
+  <button class="ttab" onclick="switchTab('owner')"><span class="ticon">👑</span>Owner</button>
+  <button class="ttab" onclick="switchTab('system')"><span class="ticon">⚙️</span>Tizim</button>
+</div>
+
+<div class="panel active" id="panel-client">
+  <span class="role-badge badge-client">Klient (mijoz)</span>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">7</div><div class="stat-label">FSM bosqich</div></div>
+    <div class="stat-card"><div class="stat-num">18</div><div class="stat-label">Funksiya</div></div>
+    <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">To'lov usul</div></div>
+  </div>
+  <div class="section-title">Asosiy oqim — Web App orqali</div>
+  <div class="flow-list">
+    <div class="flow-item"><div class="flow-num">1</div><div><div class="flow-text">Bot ishga tushadi → Web App ochiladi</div><div class="flow-sub">Telegram inline button orqali mini app to'liq ekranda ochiladi</div></div></div>
+    <div class="flow-item"><div class="flow-num">2</div><div><div class="flow-text">Katalog ko'rish → savatga qo'shish</div><div class="flow-sub">Go'sht turlari, kategoriyalar, rasmlar, narxlar</div></div></div>
+    <div class="flow-item"><div class="flow-num">3</div><div><div class="flow-text">Checkout → telefon + lokatsiya</div><div class="flow-sub">Bot orqali kontakt + GPS geolokatsiya</div></div></div>
+    <div class="flow-item"><div class="flow-num">4</div><div><div class="flow-text">To'lov → tasdiqlash → kuzatish</div><div class="flow-sub">Click/Payme/naqd + real-time status</div></div></div>
+  </div>
+  <div class="section-title">Barcha funksiyalar</div>
+  <div class="fn-grid" id="client-fns"></div>
+</div>
+
+<div class="panel" id="panel-admin">
+  <span class="role-badge badge-admin">Admin</span>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">Funksiya</div></div>
+    <div class="stat-card"><div class="stat-num">5</div><div class="stat-label">Zakaz status</div></div>
+    <div class="stat-card"><div class="stat-num">∞</div><div class="stat-label">Mahsulot boshqaruv</div></div>
+  </div>
+  <div class="section-title">Admin panel funksiyalari</div>
+  <div class="fn-grid" id="admin-fns"></div>
+</div>
+
+<div class="panel" id="panel-operator">
+  <span class="role-badge badge-operator">Operator</span>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">8</div><div class="stat-label">Funksiya</div></div>
+    <div class="stat-card"><div class="stat-num">Real</div><div class="stat-label">Vaqt ishlaydi</div></div>
+    <div class="stat-card"><div class="stat-num">24/7</div><div class="stat-label">Navbat</div></div>
+  </div>
+  <div class="section-title">Operator funksiyalari</div>
+  <div class="fn-grid" id="operator-fns"></div>
+</div>
+
+<div class="panel" id="panel-courier">
+  <span class="role-badge badge-courier">Kuryer</span>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">7</div><div class="stat-label">Funksiya</div></div>
+    <div class="stat-card"><div class="stat-num">GPS</div><div class="stat-label">Tracking</div></div>
+    <div class="stat-card"><div class="stat-num">Live</div><div class="stat-label">Status</div></div>
+  </div>
+  <div class="section-title">Kuryer funksiyalari</div>
+  <div class="fn-grid" id="courier-fns"></div>
+</div>
+
+<div class="panel" id="panel-owner">
+  <span class="role-badge badge-owner">Owner / Super-admin</span>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">14</div><div class="stat-label">Funksiya</div></div>
+    <div class="stat-card"><div class="stat-num">To'liq</div><div class="stat-label">Nazorat</div></div>
+    <div class="stat-card"><div class="stat-num">CSV</div><div class="stat-label">Hisobot</div></div>
+  </div>
+  <div class="section-title">Owner funksiyalari</div>
+  <div class="fn-grid" id="owner-fns"></div>
+</div>
+
+<div class="panel" id="panel-system">
+  <span class="role-badge badge-system">Tizim / Bot internals</span>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">10</div><div class="stat-label">Auto funksiya</div></div>
+    <div class="stat-card"><div class="stat-num">Webhook</div><div class="stat-label">To'lov tizim</div></div>
+    <div class="stat-card"><div class="stat-num">Redis</div><div class="stat-label">Sessiya</div></div>
+  </div>
+  <div class="section-title">Avtomatik funksiyalar</div>
+  <div class="fn-grid" id="system-fns"></div>
+</div>
+
+<script>
+var data = {
+client:[
+  {icon:'🚀',title:'Bot ishga tushirish',tag:'action',tagcls:'tag-action',
+   desc:'Klient /start bosadi. Bot xush kelibsiz xabari bilan Web App tugmasini ko\'rsatadi. Mini app to\'liq ekranda ochiladi.',
+   details:[{k:'Tugma',v:'Inline — "🥩 MEATZONE Katalogini Ochish"'},{k:'Web App',v:'Telegram WebApp API orqali ochiladi'},{k:'Qayta kelsa',v:'To\'g\'ri katalogga o\'tadi, intro o\'tkaziladi',cls:'p-ok'}]},
+  {icon:'🥩',title:'Katalog ko\'rish',tag:'view',tagcls:'tag-view',
+   desc:'Web App ichida go\'sht turlari, kategoriyalar (mol go\'shti, qo\'y, tovuq, kolbasa), rasm, gramm, narx ko\'rinadi.',
+   details:[{k:'Kategoriyalar',v:'Mol, Qo\'y, Tovuq, Kolbasa, Tayyorlangan'},{k:'Saralash',v:'Narx, yangilik, ko\'p sotilgan'},{k:'Qidiruv',v:'Real-time mahsulot qidiruv'}]},
+  {icon:'🛒',title:'Savatga qo\'shish',tag:'action',tagcls:'tag-action',
+   desc:'Mahsulotni tanlaydi, gramm/kg miqdorini belgilaydi, savatga qo\'shadi. Savat real-time yangilanadi.',
+   details:[{k:'Miqdor',v:'Gramm yoki kg, minimal 100g'},{k:'Savat',v:'Web App ichida ko\'rinadi, nechta qo\'shilgani badge bilan'},{k:'O\'chirish',v:'Savatdan olib tashlash imkoni',cls:'p-ok'}]},
+  {icon:'📋',title:'Zakaz shakli to\'ldirish',tag:'action',tagcls:'tag-action',
+   desc:'Web App da yetkazib berish manzilini, uy raqamini, podezd, qavat kiritadi. Eslatma qo\'shish imkoni.',
+   details:[{k:'Maydonlar',v:'Ko\'cha, uy, xonadon, podezd, qavat, eslatma'},{k:'Saqlanadi',v:'Keyingi zayavkada avtomatik to\'ldiriladi',cls:'p-ok'},{k:'Validatsiya',v:'Bo\'sh qoldirib bo\'lmaydi'}]},
+  {icon:'📱',title:'Telefon ulashish',tag:'action',tagcls:'tag-action',
+   desc:'Web App dan botga o\'tib haqiqiy telefon raqamini Telegram contact orqali ulashadi. Bir martadan ko\'proq so\'ralmaydi.',
+   details:[{k:'Mexanizm',v:'Telegram request_contact — haqiqiy raqam'},{k:'Saqlash',v:'DB ga bir marta, keyinchalik avtomatik'},{k:'Muhim',v:'O\'zgartirib bo\'lmaydi',cls:'p-warn'}]},
+  {icon:'📍',title:'Geolokatsiya yuborish',tag:'action',tagcls:'tag-action',
+   desc:'Aniq yetkazib berish manzili uchun GPS koordinatlarini ulashadi. Xarita preview ko\'rsatiladi.',
+   details:[{k:'Mexanizm',v:'Telegram request_location — GPS koordinat'},{k:'Oldingi',v:'Qaytuvchi mijozga avvalgi lokatsiya taklif etiladi',cls:'p-ok'},{k:'Saqlanadi',v:'Tasdiqlashdan so\'ng DB ga yoziladi'}]},
+  {icon:'✅',title:'Zakazni tasdiqlash',tag:'action',tagcls:'tag-action',
+   desc:'Barcha ma\'lumotlar ko\'rsatiladi: mahsulotlar, manzil, narx, yetkazib berish narxi. Tasdiqlaydi yoki lokatsiyani o\'zgartiradi.',
+   details:[{k:'Ko\'rsatiladi',v:'Mahsulotlar, jami, yetkazish narxi, manzil, GPS havola'},{k:'O\'zgartirish',v:'Faqat lokatsiya o\'zgartiriladi'},{k:'Tasdiqlash',v:'DB ga yoziladi, to\'lovga o\'tiladi',cls:'p-ok'}]},
+  {icon:'💳',title:'Payme orqali to\'lash',tag:'action',tagcls:'tag-action',
+   desc:'Payme checkout URL generatsiya qilinadi. Klient karta ma\'lumotlarini kiritadi. Webhook kelgach avtomatik davom etadi.',
+   details:[{k:'URL',v:'Payme merchant checkout'},{k:'Webhook',v:'To\'lov bo\'lgach darhol tasdiqlash'},{k:'Muddati',v:'30 daqiqa, keyin qayta urinish taklifi',cls:'p-warn'}]},
+  {icon:'💳',title:'Click orqali to\'lash',tag:'action',tagcls:'tag-action',
+   desc:'Click checkout URL generatsiya qilinadi. Ikki bosqichli webhook: Prepare + Complete.',
+   details:[{k:'URL',v:'Click service ID bilan'},{k:'Webhook',v:'Prepare → Complete ikki bosqich'},{k:'HMAC',v:'Signature tekshiriladi xavfsizlik uchun',cls:'p-ok'}]},
+  {icon:'💵',title:'Naqd pul tanlash',tag:'action',tagcls:'tag-action',
+   desc:'Kuryerga naqd to\'lash varianti. Zakaz darhol operatorga tushadi "To\'lov kutilyapti" statusi bilan.',
+   details:[{k:'Status',v:'pending_cash'},{k:'Kuryer',v:'Yetkazganda to\'lov oladi'},{k:'Tasdiqlash',v:'Operator qo\'lda tasdiqlaydi',cls:'p-warn'}]},
+  {icon:'🔔',title:'Status bildirishnomalari',tag:'notify',tagcls:'tag-notify',
+   desc:'Zakaz jarayonida bot avtomatik xabarlar yuboradi: tasdiqlandi, tayyorlanmoqda, kuryerda, yetkazildi.',
+   details:[{k:'Xabar 1',v:'To\'lov qabul qilindi + zakaz raqami'},{k:'Xabar 2',v:'Operator tasdiqladi + taxminiy vaqt'},{k:'Xabar 3',v:'Kuryer yo\'lda + taxminiy vaqt'},{k:'Xabar 4',v:'Yetkazildi + minnatdorchilik',cls:'p-ok'}]},
+  {icon:'📦',title:'Zakaz tarixi ko\'rish',tag:'view',tagcls:'tag-view',
+   desc:'/orders komandasi orqali oxirgi 10 zakazni ko\'radi. Har birining statusi, sanasi, summasi.',
+   details:[{k:'Ko\'rsatiladi',v:'Raqam, sana, mahsulotlar, summa, status'},{k:'Batafsil',v:'Inline tugma bilan ochiladi'},{k:'Qayta zakaz',v:'Oxirgi zakazdan qayta buyurtma berish',cls:'p-ok'}]},
+  {icon:'❓',title:'Yordam va aloqa',tag:'action',tagcls:'tag-action',
+   desc:'/help komandasi — ish vaqti, aloqa, minimal zakaz, yetkazish narxi haqida ma\'lumot. Operator bilan bog\'lanish tugmasi.',
+   details:[{k:'Ko\'rsatiladi',v:'Ish vaqti, minimal zakaz, yetkazish narxi'},{k:'Aloqa',v:'Operator bilan bog\'lanish inline tugmasi'},{k:'Tez savol',v:'Inline query orqali tez so\'rash'}]},
+  {icon:'⭐',title:'Baho berish',tag:'action',tagcls:'tag-action',
+   desc:'Zakaz yetkazilgandan so\'ng bot avtomatik baholash so\'raydi: 1-5 yulduz + ixtiyoriy izoh.',
+   details:[{k:'Qachon',v:'Yetkazildi xabaridan 30 daqiqa o\'tgach'},{k:'Format',v:'1-5 yulduz inline tugma + matn ixtiyoriy'},{k:'Natija',v:'Admin panelda mahsulot va xizmat reytingi',cls:'p-ok'}]},
+  {icon:'🎁',title:'Aksiya va chegirmalar',tag:'notify',tagcls:'tag-notify',
+   desc:'Bot aksiya xabarlarini push notification sifatida yuboradi. Promo-kod kiritish imkoni.',
+   details:[{k:'Push',v:'Owner/admin tomonidan broadcast'},{k:'Promo',v:'Checkout da promo-kod maydoni'},{k:'Chegirma',v:'Foiz yoki belgilangan summa'}]},
+  {icon:'🔄',title:'Savat tozalash / o\'zgartirish',tag:'action',tagcls:'tag-action',
+   desc:'Web App ichida savatni tozalash, miqdorni o\'zgartirish, mahsulot o\'chirish.',
+   details:[{k:'O\'zgartirish',v:'Miqdor +/- tugmalari'},{k:'O\'chirish',v:'Mahsulotni savatdan chiqarish'},{k:'Tozalash',v:'Barcha savatni bo\'shatish'}]},
+  {icon:'📊',title:'Yetkazish narxi hisoblash',tag:'view',tagcls:'tag-view',
+   desc:'GPS koordinatlari asosida yetkazib berish narxi avtomatik hisoblanadi va checkout da ko\'rsatiladi.',
+   details:[{k:'Hisoblash',v:'GPS masofa asosida zonalar: 1-3 km, 3-7 km, 7+ km'},{k:'Ko\'rsatish',v:'Zakaz tasdiqlashda aniq narx'},{k:'Bepul',v:'Minimal summadan yuqori bo\'lsa bepul',cls:'p-ok'}]},
+  {icon:'🌐',title:'Til tanlash',tag:'action',tagcls:'tag-action',
+   desc:'/lang komandasi orqali interfeys tilini tanlash: O\'zbek, Rus, Ingliz.',
+   details:[{k:'Tillar',v:'UZ / RU / EN'},{k:'Saqlanadi',v:'Profilda saqlanadi'},{k:'Web App',v:'Ham shu tilda ochiladi',cls:'p-ok'}]},
+],
+admin:[
+  {icon:'📬',title:'Yangi zakaz qabul qilish',tag:'notify',tagcls:'tag-notify',
+   desc:'To\'lov tasdiqlanganda admin guruhiga avtomatik xabar keladi: barcha ma\'lumotlar bilan. Inline tugmalar orqali boshqarish.',
+   details:[{k:'Xabarda',v:'Zakaz raqami, mijoz, telefon, manzil, GPS havola, mahsulotlar, summa, to\'lov turi'},{k:'Tugmalar',v:'Tasdiqlash, Kuryerga berish, Bekor qilish, Telefon ko\'rish'},{k:'Naqd',v:'Alohida "Naqd pul" badge bilan keladi',cls:'p-warn'}]},
+  {icon:'✅',title:'Zakaz tasdiqlash',tag:'action',tagcls:'tag-action',
+   desc:'Admin zakazni tasdiqlaydi va taxminiy tayyor bo\'lish vaqtini yozadi. Mijoz darhol bildirishnoma oladi.',
+   details:[{k:'Nima yozadi',v:'Taxminiy tayyorlash vaqti: "30 daqiqa"'},{k:'Status',v:'pending → confirmed → preparing'},{k:'Mijoz',v:'"Zakazingiz qabul qilindi, 30 daqiqada tayyor" xabari',cls:'p-ok'}]},
+  {icon:'🚚',title:'Kuryerga berish',tag:'action',tagcls:'tag-action',
+   desc:'Tayyor zakazni belgilaydi va mavjud kuryer botga yuboring. Kuryer zakazni qabul qiladi.',
+   details:[{k:'Kuryer tanlash',v:'Mavjud kuryer ro\'yxatidan tanlash'},{k:'Status',v:'preparing → on_delivery'},{k:'Kuryer',v:'Zakaz ma\'lumotlari va GPS havolasi yuboriladi'}]},
+  {icon:'❌',title:'Zakaz bekor qilish',tag:'action',tagcls:'tag-action',
+   desc:'Zakaz bekor qilinadi, sabab yoziladi. Mijozga sabab bilan xabar ketadi. To\'lov bo\'lsa refund boshlanadi.',
+   details:[{k:'Sabab',v:'Majburiy — mijozga ko\'rsatiladi'},{k:'Refund',v:'Payme/Click → API orqali avtomatik',cls:'p-warn'},{k:'Naqd',v:'Faqat xabar — pul masalasi qo\'lda'}]},
+  {icon:'🥩',title:'Mahsulot qo\'shish',tag:'control',tagcls:'tag-control',
+   desc:'Yangi go\'sht mahsuloti qo\'shadi: nomi, kategoriya, rasm, narx/kg, mavjud miqdor.',
+   details:[{k:'Maydonlar',v:'Nom (UZ/RU/EN), kategoriya, rasm URL, narx, stock, tavsif'},{k:'Rasm',v:'Bot orqali rasm yuklash yoki URL'},{k:'Saytda',v:'Darhol Web App katalogida ko\'rinadi',cls:'p-ok'}]},
+  {icon:'✏️',title:'Mahsulot tahrirlash',tag:'control',tagcls:'tag-control',
+   desc:'Mavjud mahsulot narxini, rasmini, tavsifini, mavjudlik holatini tahrirlaydi.',
+   details:[{k:'Narx o\'zgartirish',v:'Darhol Web App da yangilanadi'},{k:'Mavjud emas',v:'"Tugagan" belgilash — katalogda ko\'rinmaydi'},{k:'Rasm',v:'Yangisiga almashtirish',cls:'p-ok'}]},
+  {icon:'🗑️',title:'Mahsulot o\'chirish',tag:'control',tagcls:'tag-control',
+   desc:'Mahsulotni katalogdan olib tashlaydi (soft delete — ma\'lumotlar saqlanadi, faqat ko\'rinmaydi).',
+   details:[{k:'Soft delete',v:'DB da saqlanadi, is_active=false'},{k:'Tiklash',v:'O\'chirilganlarni qayta faollashtirish imkoni'},{k:'Arxiv',v:'Savdo tarixi saqlanib qoladi',cls:'p-ok'}]},
+  {icon:'🏷️',title:'Narx va aksiya boshqaruv',tag:'control',tagcls:'tag-control',
+   desc:'Chegirmalar, aksiya narxlari, vaqtinchalik takliflarni belgilaydi.',
+   details:[{k:'Chegirma',v:'% yoki aniq summa'},{k:'Muddat',v:'Boshlanish va tugash vaqti'},{k:'Ko\'rsatish',v:'Web App da "Aksiya" badge bilan',cls:'p-ok'}]},
+  {icon:'📊',title:'Zakozlar ro\'yxati va filtri',tag:'view',tagcls:'tag-view',
+   desc:'Barcha zakazlarni ko\'radi. Sana, status, to\'lov turi, tuman bo\'yicha filtrlash. Qidiruv.',
+   details:[{k:'Filter',v:'Sana, status, to\'lov usuli, kuryer, tuman'},{k:'Qidiruv',v:'Telefon, ism, zakaz raqami'},{k:'Export',v:'CSV yuklab olish',cls:'p-ok'}]},
+  {icon:'📈',title:'Kunlik statistika',tag:'view',tagcls:'tag-view',
+   desc:'Bugungi zakazlar soni, daromad, eng ko\'p sotilgan mahsulotlar, faol kuryer soni.',
+   details:[{k:'Ko\'rsatkichlar',v:'Zakazlar, daromad, o\'rtacha cheque'},{k:'Top',v:'Eng ko\'p sotilgan mahsulotlar'},{k:'Kuryer',v:'Kim nechta zakaz yetkazdi'}]},
+  {icon:'✍️',title:'Qo\'lda zakaz qo\'shish',tag:'action',tagcls:'tag-action',
+   desc:'Telefon qo\'ng\'irog\'i bo\'yicha qo\'lda zakaz kiritish. Mijoz bazasida bor-yo\'qligini tekshiradi.',
+   details:[{k:'Telefon',v:'Mavjud mijoz → ma\'lumot avtomatik to\'ldiriladi'},{k:'Yangi mijoz',v:'Tizimga qo\'shiladi'},{k:'To\'lov',v:'Naqd, plastik belgilanadi',cls:'p-ok'}]},
+  {icon:'🔔',title:'Push xabar yuborish',tag:'action',tagcls:'tag-action',
+   desc:'Barcha yoki tanlangan mijozlarga aksiya, yangilik xabarlarini yuboradi.',
+   details:[{k:'Filter',v:'Barcha, oxirgi 30 kun aktiv, ma\'lum tuman'},{k:'Preview',v:'Avval ko\'radi, keyin tasdiqlaydi'},{k:'Tezlik',v:'30 xabar/soniya Telegram limitiga mos',cls:'p-ok'}]},
+],
+operator:[
+  {icon:'📥',title:'Yangi zakazlarni kuzatish',tag:'view',tagcls:'tag-view',
+   desc:'Real vaqtda yangi zakazlar operatorning Telegram guruhiga keladi. Operator har bir zakazni ko\'rib chiqadi.',
+   details:[{k:'Guruh',v:'Maxsus operator guruhi — admin guruhidan alohida'},{k:'Yangi',v:'Darhol bildirishnoma'},{k:'Tartib',v:'Kelish tartibida'}]},
+  {icon:'📞',title:'Mijoz bilan bog\'lanish',tag:'action',tagcls:'tag-action',
+   desc:'Naqd pul zakazlarda yoki muammoli holatlarda mijozga Telegram orqali yoki telefon bilan bog\'lanadi.',
+   details:[{k:'Telegram',v:'T.me havola — to\'g\'ridan-to\'g\'ri chat'},{k:'Telefon',v:'Raqam ko\'rsatiladi — qo\'ng\'iroq uchun'},{k:'Vaqt',v:'Javob bo\'lmasa 5 daqiqa keyin qayta',cls:'p-warn'}]},
+  {icon:'✅',title:'Zakazni tasdiqlash (naqd)',tag:'action',tagcls:'tag-action',
+   desc:'Naqd pul zakazlarini qo\'lda tasdiqlaydi. Mijoz bilan aloqa qilib manzil va vaqtni aniqlashtiradi.',
+   details:[{k:'Naqd zakaz',v:'Operator qo\'lda tasdiqlashi shart'},{k:'Aniqlash',v:'Manzil, lift, podezd, qulaylik vaqti'},{k:'Kuryerga',v:'Tasdiqlangach kuryer belgilanadi',cls:'p-ok'}]},
+  {icon:'🔄',title:'Status yangilash',tag:'action',tagcls:'tag-action',
+   desc:'Zakaz statusini qo\'lda yangilash: tayyorlanmoqda, tayyor, kuryerda, yetkazildi.',
+   details:[{k:'Statuslar',v:'confirmed → preparing → ready → on_delivery → delivered'},{k:'Har o\'zgarishda',v:'Mijoz avtomatik bildirishnoma oladi'},{k:'Admin',v:'Guruhda xabar yangilanadi',cls:'p-ok'}]},
+  {icon:'🚫',title:'Zakaz bekor qilish',tag:'action',tagcls:'tag-action',
+   desc:'Operator zakaz bekor qiladi (mavjud bo\'lmagan mahsulot, noto\'g\'ri manzil va h.k.). Sabab yozadi.',
+   details:[{k:'Sabab',v:'Majburiy — mijozga ko\'rsatiladi'},{k:'Refund',v:'To\'lov bo\'lsa admin tasdiqlash bilan refund',cls:'p-warn'},{k:'Log',v:'Bekor qilish sabablari saqlanadi'}]},
+  {icon:'🗺️',title:'Kuryer manzilga yo\'naltirish',tag:'action',tagcls:'tag-action',
+   desc:'Zakaz tayyor bo\'lgach mavjud kuryerlardan birini tanlaydi va GPS havolasi bilan yo\'naltiradi.',
+   details:[{k:'Kuryer tanlash',v:'Bo\'sh kuryer ro\'yxati — joylashuvga qarab'},{k:'GPS',v:'Google Maps havola + manzil matni'},{k:'Mijoz',v:'"Kuryer yo\'lda" xabari ketadi',cls:'p-ok'}]},
+  {icon:'💬',title:'Mijoz savollariga javob',tag:'action',tagcls:'tag-action',
+   desc:'/help yoki inline query orqali kelgan savollarga javob beradi. Klient to\'g\'ridan-to\'g\'ri operator bilan chat qilishi mumkin.',
+   details:[{k:'Chat',v:'Operator Telegram orqali javob beradi'},{k:'Tezlik',v:'5 daqiqa ichida javob maqsad'},{k:'Arxiv',v:'Suhbat tarixi saqlanadi',cls:'p-ok'}]},
+  {icon:'📋',title:'Qo\'lda zakaz kiritish',tag:'action',tagcls:'tag-action',
+   desc:'Telefon qo\'ng\'irog\'idan kelgan zakazni tizimga kiritadi: mijoz, mahsulotlar, manzil, to\'lov turi.',
+   details:[{k:'Interfeys',v:'Bot orqali bosqichma-bosqich kiritish'},{k:'Mijoz baza',v:'Telefon bo\'yicha topish yoki yangisini yaratish'},{k:'Tasdiqlash',v:'Admin guruhiga avtomatik tushadi',cls:'p-ok'}]},
+],
+courier:[
+  {icon:'📩',title:'Zakaz qabul qilish',tag:'action',tagcls:'tag-action',
+   desc:'Operator yoki tizim kuryerga zakaz yuboradi. Kuryer qabul qiladi yoki rad etadi (boshqa kishi oladi).',
+   details:[{k:'Xabarda',v:'Mijoz ismi, telefon, to\'liq manzil, GPS havola, mahsulotlar'},{k:'Qabul qilish',v:'"✅ Qabul qildim" inline tugma'},{k:'Rad etish',v:'"❌ Rad etaman" — boshqa kuryerga o\'tadi',cls:'p-warn'}]},
+  {icon:'🗺️',title:'Manzilni ko\'rish',tag:'view',tagcls:'tag-view',
+   desc:'Mijoz GPS koordinatlariga asoslangan Google Maps havolasi. Kuryer yo\'lni ko\'radi.',
+   details:[{k:'GPS',v:'Aniq koordinatlar bilan Maps havola'},{k:'Matn',v:'Ko\'cha, uy, xonadon, podezd, qavat'},{k:'Masofa',v:'Aniqlanadi — yo\'l taxminiy vaqti'}]},
+  {icon:'📞',title:'Mijoz bilan bog\'lanish',tag:'action',tagcls:'tag-action',
+   desc:'Kuryer manzilni topa olmasa yoki muammo bo\'lsa mijozning to\'liq raqamiga qo\'ng\'iroq qiladi.',
+   details:[{k:'Telefon',v:'To\'liq raqam — bir tugmada dialer ochiladi'},{k:'Telegram',v:'T.me havola — xabar yuborish'},{k:'Vaqt',v:'Qo\'ng\'iroq bo\'lmasa operatorga xabar',cls:'p-warn'}]},
+  {icon:'✅',title:'Yetkazildim belgilash',tag:'action',tagcls:'tag-action',
+   desc:'Mahsulot topshirilgach "Yetkazildim" bosadi. Mijozga darhol tasdiqlash xabari ketadi.',
+   details:[{k:'Bosqich',v:'"✅ Yetkazildim" inline tugma'},{k:'Mijoz',v:'"Zakazingiz yetkazildi" xabari'},{k:'Admin',v:'Guruhda status yangilanadi',cls:'p-ok'}]},
+  {icon:'💵',title:'Naqd to\'lov qabul qilish',tag:'action',tagcls:'tag-action',
+   desc:'Naqd pul zakazlarda kuryer pulni oladi va tizimda "To\'landi" deb belgilaydi.',
+   details:[{k:'Summa',v:'Zakazda ko\'rsatilgan aniq summa'},{k:'Tasdiqlash',v:'"💵 Naqd olindi" tugmasi'},{k:'Qaytim',v:'Mayda pul kerak bo\'lsa oldindan aytiladi',cls:'p-warn'}]},
+  {icon:'⚠️',title:'Muammo xabar qilish',tag:'action',tagcls:'tag-action',
+   desc:'Manzil topilmasa, mijoz yo\'q bo\'lsa, muammo bo\'lsa operatorga xabar qiladi.',
+   details:[{k:'Muammo turlari',v:'Manzil topilmadi, mijoz javob bermadi, qopqoq yopiq'},{k:'Operator',v:'Darhol xabar oladi va qaror qiladi'},{k:'Kutish',v:'Operator qaror berichunga 10 daqiqa kutish',cls:'p-warn'}]},
+  {icon:'📊',title:'Kunlik hisobot',tag:'view',tagcls:'tag-view',
+   desc:'Kuryer o\'z smena oxirida necha zakaz yetkazganini, jami summani ko\'radi.',
+   details:[{k:'Ko\'rsatiladi',v:'Zakazlar soni, jami summa, naqd/plastik'},{k:'Smena',v:'Boshlanish va tugash vaqti'},{k:'Admin',v:'Admin ham shu hisobotni ko\'radi',cls:'p-ok'}]},
+],
+owner:[
+  {icon:'📊',title:'To\'liq statistika',tag:'view',tagcls:'tag-view',
+   desc:'Bugun, hafta, oy bo\'yicha zakazlar, daromad, o\'rtacha check, top mahsulotlar, top kuryer.',
+   details:[{k:'Kunlik',v:'Zakazlar, daromad, yangi mijozlar'},{k:'Oylik',v:'O\'sish dinamikasi, eng faol tuman'},{k:'Top',v:'Mahsulot, kuryer, tuman reytingi',cls:'p-ok'}]},
+  {icon:'👥',title:'Xodimlar boshqaruvi',tag:'control',tagcls:'tag-control',
+   desc:'Admin, operator, kuryer qo\'shish va o\'chirish. Har biriga rol belgilash.',
+   details:[{k:'Rollar',v:'Admin, Operator, Kuryer'},{k:'Qo\'shish',v:'/addstaff @username rol'},{k:'O\'chirish',v:'/removestaff @username',cls:'p-warn'}]},
+  {icon:'💰',title:'Narx zonalari',tag:'control',tagcls:'tag-control',
+   desc:'Yetkazib berish narxini masofaga qarab zonalarga bo\'lib sozlaydi. Minimal zakaz summasi.',
+   details:[{k:'Zona 1',v:'0-3 km — belgilangan narx'},{k:'Zona 2',v:'3-7 km — belgilangan narx'},{k:'Zona 3',v:'7+ km — belgilangan narx yoki rad'},{k:'Bepul',v:'Minimal summadan yuqori bo\'lsa bepul',cls:'p-ok'}]},
+  {icon:'📢',title:'Broadcast xabar',tag:'action',tagcls:'tag-action',
+   desc:'Barcha yoki tanlangan mijozlarga aksiya, yangilik, maxsus taklif xabarlarini yuboradi.',
+   details:[{k:'Filter',v:'Barcha, premium, aktiv 30 kun, tuman'},{k:'Preview',v:'Avval ko\'radi → tasdiqlash → yuborish'},{k:'Natija',v:'Yuborildi/Xato hisoboti',cls:'p-ok'}]},
+  {icon:'⚙️',title:'Bot sozlamalari',tag:'control',tagcls:'tag-control',
+   desc:'Minimal zakaz summasi, ish vaqti, naqd to\'lov on/off, token muddati, til sozlamalari.',
+   details:[{k:'Minimal',v:'Zakaz minimal summasi'},{k:'Ish vaqti',v:'09:00-22:00 — tashqarida "Yopiq" xabari'},{k:'Naqd',v:'Naqd to\'lov yoqish/o\'chirish',cls:'p-warn'}]},
+  {icon:'📁',title:'CSV hisobot export',tag:'view',tagcls:'tag-view',
+   desc:'Tanlangan davr uchun barcha zakazlarni CSV faylda yuklab oladi.',
+   details:[{k:'Ustunlar',v:'Raqam, sana, mijoz, telefon, mahsulotlar, summa, to\'lov, status'},{k:'Format',v:'Excel va Google Sheets bilan ishlaydi'},{k:'Yuboriladi',v:'Bot orqali fayl sifatida',cls:'p-ok'}]},
+  {icon:'🏷️',title:'Chegirma va promo kod',tag:'control',tagcls:'tag-control',
+   desc:'Promo-kodlar yaratadi, foiz yoki aniq summa chegirma belgilaydi, muddati sozlanadi.',
+   details:[{k:'Yaratish',v:'/createpromo KOD 20% 2026-05-01'},{k:'Bir martalik',v:'Har mijozga bir marta ishlaydi'},{k:'Ko\'rish',v:'Faol promo-kodlar ro\'yxati',cls:'p-ok'}]},
+  {icon:'📣',title:'Mahsulot spotlighting',tag:'action',tagcls:'tag-action',
+   desc:'Tanlangan mahsulotni katalog boshiga chiqarish, "Tavsiya etilgan" badge qo\'yish.',
+   details:[{k:'Badge',v:'"⭐ Tavsiya" yoki "🔥 Yangi"'},{k:'Pozitsiya',v:'Katalog tepasiga chiqarish'},{k:'Muddat',v:'Avtomatik tugash vaqti',cls:'p-ok'}]},
+  {icon:'🌍',title:'Yetkazish hududini boshqarish',tag:'control',tagcls:'tag-control',
+   desc:'Qaysi tumanlarga yetkazish mavjudligini belgilaydi. Tashqaridagi GPS lokatsiya rad etiladi.',
+   details:[{k:'Hudud',v:'Toshkent tumanlari ro\'yxati'},{k:'Rad',v:'Hudud tashqarisida "Yetkazmaymiz" xabari'},{k:'Kengaytirish',v:'Yangi tuman qo\'shish',cls:'p-ok'}]},
+  {icon:'⭐',title:'Reytinglar va sharhlar',tag:'view',tagcls:'tag-view',
+   desc:'Mahsulotlar va umumiy xizmat sifatini ko\'radi. Yomon baho bo\'lsa avtomatik xabar oladi.',
+   details:[{k:'Ko\'rsatiladi',v:'O\'rtacha baho, sharhlar soni'},{k:'Filter',v:'Yomon baholar (1-2 yulduz)'},{k:'Ogohlantirish',v:'2 yulduz va pastda darhol xabar',cls:'p-warn'}]},
+  {icon:'🚫',title:'Mijozni ban qilish',tag:'control',tagcls:'tag-control',
+   desc:'Soxta yoki muammoli mijozni bloklaydi. Uning zakazlari qabul qilinmaydi.',
+   details:[{k:'Buyruq',v:'/ban [telefon] [sabab]'},{k:'Mijoz',v:'Jimgina — hech narsa bilmaydi'},{k:'Unban',v:'/unban [telefon] bilan bekor qilish',cls:'p-warn'}]},
+  {icon:'💳',title:'To\'lov tizimi sozlamalari',tag:'control',tagcls:'tag-control',
+   desc:'Payme va Click merchant sozlamalarini yangilaydi. To\'lov usullarini yoqish/o\'chirish.',
+   details:[{k:'Payme',v:'Merchant ID va secret key'},{k:'Click',v:'Service ID va merchant ID'},{k:'Test rejim',v:'Sandbox yoqish — real to\'lovsiz test',cls:'p-ok'}]},
+  {icon:'🔐',title:'Xavfsizlik logi',tag:'view',tagcls:'tag-view',
+   desc:'Kim qachon qaysi amalni bajarganini ko\'radi: admin harakatlari, kiriш, o\'zgarishlar.',
+   details:[{k:'Log',v:'Vaqt, xodim, amal, zakaz ID'},{k:'Filtr',v:'Xodim, amal turi, sana'},{k:'Eksport',v:'CSV',cls:'p-ok'}]},
+  {icon:'💬',title:'Xodim chati',tag:'action',tagcls:'tag-action',
+   desc:'Owner bot orqali barcha admin, operator, kuryer larga xabar yuborishi mumkin.',
+   details:[{k:'Ommaviy',v:'Barcha xodimlarga bir vaqtda'},{k:'Alohida',v:'Ma\'lum rolga — faqat kuryer va h.k.'},{k:'Shaxsiy',v:'Bitta xodimga to\'g\'ridan xabar',cls:'p-ok'}]},
+],
+system:[
+  {icon:'🔑',title:'Token validatsiya',tag:'auto',tagcls:'tag-auto',
+   desc:'Har bir /start buyrug\'idagi deep link tokenni tekshiradi: mavjud, muddati, foydalanilmagan.',
+   details:[{k:'TTL',v:'24 soat — sozlanadi'},{k:'Bir martalik',v:'Ishlatilgan token qayta ishlamaydi'},{k:'Xato',v:'Aniq xabar + saytga qaytish havolasi',cls:'p-warn'}]},
+  {icon:'👤',title:'Foydalanuvchi taniish',tag:'auto',tagcls:'tag-auto',
+   desc:'Har xabarda Telegram ID bo\'yicha foydalanuvchi topiladi. Yangi bo\'lsa yaratiladi. Banned bo\'lsa jimgina o\'tiladi.',
+   details:[{k:'Yangi',v:'Telegram ID, ism, username saqlash'},{k:'Banned',v:'Hech narsa ko\'rsatmaydi',cls:'p-warn'},{k:'Ma\'lumot',v:'Kontekstga biriktiriladi'}]},
+  {icon:'⚡',title:'Redis sessiya',tag:'auto',tagcls:'tag-auto',
+   desc:'FSM holati va vaqtinchalik ma\'lumotlar (zakaz ID, telefon, lokatsiya) Redis da saqlanadi. TTL 2 soat.',
+   details:[{k:'Kalit',v:'session:{telegram_id}'},{k:'TTL',v:'2 soat — muddati o\'tsa sessiya tozalanadi'},{k:'Tiklash',v:'Bot crash bo\'lsa ham davom etish',cls:'p-ok'}]},
+  {icon:'🛡️',title:'Rate limiter',tag:'auto',tagcls:'tag-auto',
+   desc:'Bir foydalanuvchidan 1 daqiqada 15+ xabar kelsa — ogohlantirish va vaqtinchalik blok.',
+   details:[{k:'Chegara',v:'15 xabar / 60 soniya'},{k:'Redis',v:'Hisoblagich TTL 60s'},{k:'Ogohlantirish',v:'1 marta yuboriladi, keyin jim',cls:'p-warn'}]},
+  {icon:'💳',title:'Payme webhook',tag:'auto',tagcls:'tag-auto',
+   desc:'Payme JSONRPC so\'rovlarini qabul qiladi: CheckPerform, Create, Perform, Cancel. HMAC tekshiriladi.',
+   details:[{k:'Metod 1',v:'CheckPerformTransaction — zakaz mavjudmi'},{k:'Metod 2',v:'PerformTransaction — to\'lov tugadi → zakazni yangilash'},{k:'Metod 3',v:'CancelTransaction — bekor qilish',cls:'p-warn'},{k:'Idempotent',v:'Bir webhook 2 marta kelsa — bir marta ishlaydi',cls:'p-ok'}]},
+  {icon:'💳',title:'Click webhook',tag:'auto',tagcls:'tag-auto',
+   desc:'Click 2 bosqichli so\'rov: Prepare (zakaz tekshirish) + Complete (to\'lov tasdiqlash).',
+   details:[{k:'Prepare',v:'Zakaz mavjudmi, summa to\'g\'rimi'},{k:'Complete',v:'Muvaffaqiyatli → zakazni yangilash'},{k:'SHA1',v:'Signature tekshiriladi',cls:'p-ok'}]},
+  {icon:'📤',title:'Admin guruhga bildirishnoma',tag:'auto',tagcls:'tag-auto',
+   desc:'To\'lov tasdiqlanganda yoki naqd zakaz qo\'yilganda admin va operator guruhlariga avtomatik xabar.',
+   details:[{k:'Format',v:'Barcha zakaz ma\'lumotlari + inline tugmalar'},{k:'Message ID',v:'DB ga saqlanadi — keyinchalik tahrirlash uchun'},{k:'Ikki guruh',v:'Admin guruh + Operator guruh alohida',cls:'p-ok'}]},
+  {icon:'📨',title:'Mijozga bildirishnoma',tag:'auto',tagcls:'tag-auto',
+   desc:'Zakaz holatining har o\'zgarishida mijozga avtomatik Telegram xabari yuboriladi.',
+   details:[{k:'Xabar 1',v:'To\'lov qabul qilindi'},{k:'Xabar 2',v:'Tasdiqlandi + vaqt'},{k:'Xabar 3',v:'Kuryer yo\'lda'},{k:'Xabar 4',v:'Yetkazildi',cls:'p-ok'},{k:'Bloklagan',v:'Bot bloklansa — DB da unreachable belgilanadi',cls:'p-warn'}]},
+  {icon:'🕐',title:'Ish vaqti tekshiruvi',tag:'auto',tagcls:'tag-auto',
+   desc:'Har zakaz qo\'yishdan oldin ish vaqtini tekshiradi. Tashqarisida "Yopiq" xabari va ish vaqtini ko\'rsatadi.',
+   details:[{k:'Vaqt',v:'Owner sozlamasidan o\'qiladi'},{k:'Yopiq',v:'"Hozir ishlamaymiz. Ish vaqti: 09:00-22:00"'},{k:'Saqlash',v:'Yopiqda ham savatga qo\'shish mumkin',cls:'p-ok'}]},
+  {icon:'🔄',title:'Premium tugash tekshiruvi',tag:'auto',tagcls:'tag-auto',
+   desc:'Har so\'rovda premium_expires_at tekshiriladi. Muddati o\'tsa avtomatik oddiy holatga qaytariladi.',
+   details:[{k:'Lazy expiry',v:'Cronjob kerak emas — so\'rov vaqtida tekshiriladi'},{k:'Xabar',v:'Muddati o\'tganda bir marta bildirishnoma'},{k:'DB',v:'is_premium=false, expires_at=null',cls:'p-ok'}]},
+  {icon:'📝',title:'Amallar logi',tag:'auto',tagcls:'tag-auto',
+   desc:'Muhim amallar avtomatik loglanadi: zakaz yaratildi, to\'landi, bekor qilindi, xodim harakat qildi.',
+   details:[{k:'Loglanadi',v:'Vaqt, amal, foydalanuvchi/xodim, zakaz ID'},{k:'Storage',v:'DB + fayl (rotate har kecha)'},{k:'Owner',v:'Log ko\'rish + export imkoni',cls:'p-ok'}]},
+]};
+
+function buildFns(arr, containerId) {
+  var c = document.getElementById(containerId);
+  if(!c) return;
+  c.innerHTML = '';
+  arr.forEach(function(fn, i) {
+    var card = document.createElement('div');
+    card.className = 'fn-card';
+    var head = document.createElement('div');
+    head.className = 'fn-head';
+    head.innerHTML = '<span class="fn-title"><span class="fn-icon">'+fn.icon+'</span>'+fn.title+'</span><span class="fn-tag '+fn.tagcls+'">'+fn.tag+'</span><span class="chev" id="chev-'+containerId+'-'+i+'">▼</span>';
+    head.onclick = (function(cid, idx){ return function(){ toggleFn(cid, idx); }; })(containerId, i);
+    var body = document.createElement('div');
+    body.className = 'fn-body';
+    body.id = 'fb-'+containerId+'-'+i;
+    var bhtml = '<div class="fn-desc">'+fn.desc+'</div><div class="fn-details">';
+    (fn.details||[]).forEach(function(d) {
+      bhtml += '<div class="fn-row"><span class="fn-key">'+d.k+'</span><span class="fn-val">';
+      if(d.cls) bhtml += '<span class="pill '+d.cls+'">'+d.v+'</span>';
+      else bhtml += d.v;
+      bhtml += '</span></div>';
+    });
+    bhtml += '</div>';
+    body.innerHTML = bhtml;
+    card.appendChild(head);
+    card.appendChild(body);
+    c.appendChild(card);
+  });
+}
+
+function toggleFn(cid, idx) {
+  var body = document.getElementById('fb-'+cid+'-'+idx);
+  var chev = document.getElementById('chev-'+cid+'-'+idx);
+  var isOpen = body.classList.contains('open');
+  document.querySelectorAll('#panel-'+cid.replace('-fns','')+' .fn-body').forEach(function(b){b.classList.remove('open')});
+  document.querySelectorAll('#panel-'+cid.replace('-fns','')+' .chev').forEach(function(c){c.classList.remove('open')});
+  if(!isOpen){ body.classList.add('open'); chev.classList.add('open'); }
+}
+
+function switchTab(role) {
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.ttab').forEach(function(t){t.classList.remove('active')});
+  document.getElementById('panel-'+role).classList.add('active');
+  var map = ['client','admin','operator','courier','owner','system'];
+  document.querySelectorAll('.ttab')[map.indexOf(role)].classList.add('active');
+}
+
+buildFns(data.client, 'client-fns');
+buildFns(data.admin, 'admin-fns');
+buildFns(data.operator, 'operator-fns');
+buildFns(data.courier, 'courier-fns');
+buildFns(data.owner, 'owner-fns');
+buildFns(data.system, 'system-fns');
+</script>

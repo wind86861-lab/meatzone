@@ -1,4 +1,4 @@
-# PneuMax - Building Materials E-Commerce
+# VipStroy - Building Materials E-Commerce
 
 A modern, high-performance e-commerce platform for building materials and construction tools.
 

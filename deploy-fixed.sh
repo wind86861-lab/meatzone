@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# PneuMax Fixed Deployment Script
-echo "🚀 Starting PneuMax deployment (Fixed)..."
+# VipStroy Fixed Deployment Script
+echo "🚀 Starting VipStroy deployment (Fixed)..."
 
-# Go to the PneuMax directory
-cd PneuMax
+# Go to the VipStroy directory
+cd VipStroy
 
 # Install PM2 globally with sudo
 echo "📥 Installing PM2 globally..."
@@ -15,7 +15,7 @@ echo "⚙️ Creating PM2 configuration..."
 cat > ecosystem.config.js << 'EOF'
 module.exports = {
   apps: [{
-    name: 'pneumax',
+    name: 'vipstroy',
     script: './server/index.js',
     cwd: './',
     instances: 1,
@@ -43,5 +43,5 @@ pm2 startup
 echo "✅ Deployment complete!"
 echo "🌐 Your application should be running on port 5000"
 echo "📊 Check status with: pm2 status"
-echo "📋 View logs with: pm2 logs pneumax"
-echo "🔄 Restart with: pm2 restart pneumax"
+echo "📋 View logs with: pm2 logs vipstroy"
+echo "🔄 Restart with: pm2 restart vipstroy"

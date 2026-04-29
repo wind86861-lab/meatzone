@@ -15,7 +15,7 @@ export const uz = {
   },
   hero: {
     title: "SANOAT EHTIYOT QISMLARI-",
-    subtitle: "PNEUMAX",
+    subtitle: "VIPSTROY",
     description: "Tez, ishonchli va hamyonbop.",
     button: "Buyurtma berish"
   },

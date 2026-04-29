@@ -150,6 +150,7 @@ export const teamAPI = {
 export const ordersAPI = {
   getAll: (params) => api.get('/orders', { params }),
   getById: (id) => api.get(`/orders/${id}`),
+  getByPhone: (phone) => api.get(`/orders/by-phone/${encodeURIComponent(phone)}`),
   create: (data) => api.post('/orders', data),
   createOrder: (data) => api.post('/orders/create', data),
   update: (id, data) => api.put(`/orders/${id}`, data),
@@ -160,6 +161,7 @@ export const ordersAPI = {
 export const usersAPI = {
   getAll: (params) => api.get('/auth/admin/users', { params }),
   setPremium: (id, data) => api.post(`/auth/admin/users/${id}/premium`, data),
+  setRole: (id, data) => api.put(`/auth/admin/users/${id}/role`, data),
   broadcast: (data) => api.post('/auth/admin/broadcast', data),
 }
 

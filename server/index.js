@@ -41,21 +41,25 @@ process.on('unhandledRejection', (reason) => {
   logger.error('[FATAL] Unhandled Promise Rejection — keeping process alive:', reason);
 });
 
-// Security headers
+// Security headers — detect HTTPS from env or nginx X-Forwarded-Proto
 const isHttps = process.env.HTTPS === 'true' || process.env.SITE_URL?.startsWith('https');
+// Middleware to detect per-request if we're on HTTPS (behind nginx)
+app.use((req, res, next) => {
+  req.isSecure = isHttps || req.headers['x-forwarded-proto'] === 'https';
+  next();
+});
 app.use(helmet({
   crossOriginResourcePolicy: false,
-  // COOP requires HTTPS to be useful — disable on HTTP to avoid browser warnings
-  crossOriginOpenerPolicy: isHttps ? { policy: 'same-origin' } : false,
-  // HSTS only makes sense over HTTPS
-  hsts: isHttps ? { maxAge: 15552000, includeSubDomains: true } : false,
-  // Origin-Agent-Cluster requires consistent HTTPS context — disable on HTTP
-  originAgentCluster: isHttps,
-  contentSecurityPolicy: false, // We set it manually below
+  crossOriginOpenerPolicy: false,   // disabled — only safe on HTTPS, causes browser warnings on HTTP
+  hsts: false,                       // disabled — nginx handles HTTPS redirect if needed
+  originAgentCluster: false,         // disabled — causes console warnings on HTTP
+  contentSecurityPolicy: false,      // We set it manually below
+  frameguard: false,                 // disabled — Telegram Mini App embeds page in WebView; SAMEORIGIN blocks it
 }));
 
-// Set Content-Security-Policy manually — never include upgrade-insecure-requests on HTTP
+// Set Content-Security-Policy manually
 app.use((req, res, next) => {
+  const secure = req.isSecure;
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://telegram.org",
@@ -68,7 +72,8 @@ app.use((req, res, next) => {
     "worker-src 'self' blob:",
     "base-uri 'self'",
     "form-action 'self'",
-    ...(isHttps ? ["upgrade-insecure-requests"] : []),
+    "frame-ancestors *",
+    ...(secure ? ["upgrade-insecure-requests"] : []),
   ].join('; ');
   res.setHeader('Content-Security-Policy', csp);
   next();
@@ -122,21 +127,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API routes
 app.use('/api/auth', authLimiter, require('./routes/auth'));
-app.use('/api/customers', apiLimiter, require('./routes/customers'));
-app.use('/api/appointments', apiLimiter, require('./routes/appointments'));
-app.use('/api/services', apiLimiter, require('./routes/services'));
-app.use('/api/inventory', apiLimiter, require('./routes/inventory'));
 app.use('/api/analytics', apiLimiter, require('./routes/analytics'));
 app.use('/api/products', apiLimiter, require('./routes/products'));
 app.use('/api/categories', apiLimiter, require('./routes/categories'));
-app.use('/api/blogs', apiLimiter, require('./routes/blogs'));
-app.use('/api/branches', apiLimiter, require('./routes/branches'));
-app.use('/api/faqs', apiLimiter, require('./routes/faqs'));
-app.use('/api/requests', apiLimiter, require('./routes/requests'));
 app.use('/api/settings', apiLimiter, require('./routes/settings'));
-app.use('/api/page-content', apiLimiter, require('./routes/pageContent'));
 app.use('/api/upload', apiLimiter, require('./routes/upload'));
-app.use('/api/team', apiLimiter, require('./routes/team'));
 app.use('/api/orders', apiLimiter, require('./routes/orders'));
 
 // Stage 4: Payment provider webhooks (NO rate limiting — providers need unrestricted access)
@@ -151,7 +146,7 @@ app.get('/api/health', async (req, res) => {
 
     res.json({
       status: 'OK',
-      message: 'PneuMax API is running',
+      message: 'MeatZone API is running',
       timestamp: new Date().toISOString(),
       services: {
         database: 'connected',

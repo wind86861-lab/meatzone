@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     // ── Production ─────────────────────────────────────────────────────────────
     {
-      name: 'pneumax',
+      name: 'vipstroy',
       script: './server/index.js',
       cwd: './',
       // Use 'max' for cluster mode (CPU count) or set a fixed number.
@@ -33,7 +33,7 @@ module.exports = {
 
     // ── Development (optional: pm2 start ecosystem.config.js --env development) ─
     {
-      name: 'pneumax-dev',
+      name: 'vipstroy-dev',
       script: './server/index.js',
       cwd: './',
       instances: 1,

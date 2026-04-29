@@ -79,6 +79,21 @@ productSchema.virtual('hasDiscount').get(function () {
   return this.discountValue > 0;
 });
 
+productSchema.virtual('discountPercent').get(function () {
+  if (!this.discountValue || this.discountValue <= 0) return 0;
+  if (this.discountType === 'percentage') return Math.min(this.discountValue, 100);
+  if (this.price > 0) return Math.min(Math.round((this.discountValue / this.price) * 100), 100);
+  return 0;
+});
+
+productSchema.virtual('rating').get(function () {
+  return 4.7;
+});
+
+productSchema.virtual('reviewCount').get(function () {
+  return 0;
+});
+
 // Stage 1: Get price based on user type
 productSchema.methods.getPriceByUserType = function (userType = 'regular') {
   if (userType === 'premium' && this.premiumPrice !== null && this.premiumPrice >= 0) {

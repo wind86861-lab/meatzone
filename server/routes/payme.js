@@ -224,28 +224,51 @@ async function performTransaction(id, params) {
   var order = await Order.findById(attempt.order);
   if (order) {
     order.paymentStatus = 'paid';
-    order.paymentMethod = 'online';
+    order.paymentMethod = 'payme';
     order.paymentId = paymeId;
     order.paidAt = new Date();
     await order.save();
 
     logger.info('Payme payment completed', { orderId: String(order._id), amount: attempt.amount });
 
-    // Notify via Telegram
-    var { sendTelegramMessage } = require('../utils/telegram');
-    var msg = '💳 <b>Оплата получена (Payme)</b>\n\n' +
-      '🆔 Заказ: ' + order._id + '\n' +
-      '💰 Сумма: ' + order.totalPrice.toLocaleString() + ' сум\n' +
-      '✅ Статус: Оплачено';
-    sendTelegramMessage(msg).catch(function () {});
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+      var https = require('https');
+      var token = process.env.TELEGRAM_BOT_TOKEN;
 
-    // Notify customer bot
-    if (order.telegramId && process.env.TELEGRAM_BOT_TOKEN) {
-      var { Telegraf } = require('telegraf');
-      var tempBot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-      tempBot.telegram.sendMessage(order.telegramId,
-        '✅ Оплата получена!\n\n📦 Заказ: ' + order._id + '\n💰 ' + order.totalPrice.toLocaleString() + ' сум\n\n⏰ Время доставки будет сообщено.'
-      ).catch(function () {});
+      var sendTg = function (chatId, text, extra) {
+        var body = JSON.stringify(Object.assign({ chat_id: chatId, text: text, parse_mode: 'Markdown', disable_web_page_preview: true }, extra || {}));
+        var opts = { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } };
+        var req = https.request('https://api.telegram.org/bot' + token + '/sendMessage', opts, function () { });
+        req.on('error', function () { });
+        req.write(body);
+        req.end();
+      };
+
+      // Notify customer
+      if (order.telegramId) {
+        sendTg(order.telegramId,
+          '✅ *Оплата получена (Payme)!*\n\n📦 `' + order._id + '`\n💰 ' + order.totalPrice.toLocaleString('ru-RU') + ' сум\n\n⏰ Время доставки сообщит администратор.'
+        );
+      }
+
+      // Notify admin group with full order card
+      var adminGroup = process.env.TELEGRAM_ADMIN_GROUP;
+      if (adminGroup) {
+        var OrderItem = require('../models/OrderItem');
+        OrderItem.find({ order: order._id }).then(function (items) {
+          var lines = items.map(function (i) { return '• ' + i.name + ' × ' + i.quantity + ' = ' + (i.price * i.quantity).toLocaleString('ru-RU') + ' сум'; });
+          var map = (order.latitude && order.longitude) ? 'https://maps.google.com/?q=' + order.latitude + ',' + order.longitude : null;
+          var prem = order.isPremiumOrder ? '👑 *PREMIUM* ' : '';
+          var msg = '💳 ' + prem + '*Оплата получена (Payme)*\n\n🆔 `' + order._id + '`\n' +
+            '👤 ' + (order.customerName || '—') + '\n📱 ' + (order.customerPhone || '—') + '\n' +
+            '� ' + (order.address || '—') + ', ' + (order.district || '—') + '\n' +
+            (map ? '🗺️ [Карта](' + map + ')\n' : '') +
+            '💰 *' + order.totalPrice.toLocaleString('ru-RU') + ' сум*\n\n🛒 *Товары:*\n' + lines.join('\n');
+          var ph = (order.customerPhone || '').replace(/\s/g, '');
+          var kb = [[{ text: '✅ Подтвердить', callback_data: 'adm_confirm_' + order._id }, { text: '📞 Позвонить', url: 'tel:' + ph }], [{ text: '🔍 Детали', callback_data: 'adm_detail_' + order._id }, { text: '🚚 Доставлен', callback_data: 'adm_delivered_' + order._id }], [{ text: '❌ Отменить', callback_data: 'adm_cancel_' + order._id }, { text: '📋 Телефон', callback_data: 'adm_phone_' + order._id }]];
+          sendTg(adminGroup, msg, { reply_markup: JSON.stringify({ inline_keyboard: kb }) });
+        }).catch(function () { });
+      }
     }
   }
 

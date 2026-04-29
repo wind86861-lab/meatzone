@@ -10,7 +10,7 @@ const SETTING_GROUPS = [
     fields: [
       { key: 'phone1', label: 'Номер телефона 1', type: 'text', placeholder: '+998 XX XXX XX XX' },
       { key: 'phone2', label: 'Номер телефона 2', type: 'text', placeholder: '+998 XX XXX XX XX' },
-      { key: 'email', label: 'Электронная почта', type: 'text', placeholder: 'info@pneumax.uz' },
+      { key: 'email', label: 'Электронная почта', type: 'text', placeholder: 'info@meatzone.uz' },
       { key: 'workingHours', label: 'Часы работы', type: 'text', placeholder: 'Пн-Сб: 09:00 - 18:00' },
     ],
   },
@@ -40,8 +40,8 @@ const SETTING_GROUPS = [
     label: 'Настройки сайта',
     icon: MessageCircle,
     fields: [
-      { key: 'siteName', label: 'Название сайта', type: 'text', placeholder: 'PneuMax' },
-      { key: 'logoText', label: 'Текст логотипа', type: 'text', placeholder: 'PNEUMAX' },
+      { key: 'siteName', label: 'Название сайта', type: 'text', placeholder: 'MeatZone' },
+      { key: 'logoText', label: 'Текст логотипа', type: 'text', placeholder: 'MEATZONE' },
       { key: 'logoImage', label: 'Изображение логотипа', type: 'image' },
     ],
   },

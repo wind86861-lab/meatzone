@@ -1,4 +1,4 @@
-# PneuMax - Tire & Automotive Service Management Platform
+# VipStroy - Tire & Automotive Service Management Platform
 
 A modern, full-stack web application for managing tire and automotive service operations.
 
@@ -42,7 +42,7 @@ A modern, full-stack web application for managing tire and automotive service op
 
 1. Clone the repository
 ```bash
-cd PneuMax
+cd VipStroy
 ```
 
 2. Install dependencies
@@ -72,7 +72,7 @@ The backend will run on `http://localhost:5000`
 ## Project Structure
 
 ```
-PneuMax/
+VipStroy/
 ├── client/                 # React frontend
 │   ├── src/
 │   │   ├── components/    # Reusable components

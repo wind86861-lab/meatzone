@@ -44,55 +44,55 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-xl mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-primary rounded-xl mb-4 shadow-pop">
             <Lock size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">PneuMax Admin</h1>
-          <p className="text-gray-400 text-sm mt-1">Войдите для управления сайтом</p>
+          <h1 className="font-display text-3xl tracking-wide text-ink">MEATZONE</h1>
+          <p className="text-ink-dim text-sm mt-1">Административная панель</p>
         </div>
 
-        <div className="bg-[#1e293b] rounded-2xl p-6 shadow-2xl border border-gray-700/50">
+        <div className="bg-bg-surface rounded-2xl p-6 shadow-card border border-ink-line">
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Эл. почта</label>
+              <label className="block text-sm font-bold text-ink mb-1.5">Эл. почта</label>
               <div className="relative">
-                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
                 <input
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
-                  placeholder="admin@pneumax.uz"
-                  className="w-full bg-[#0f172a] border border-gray-600 text-white rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
+                  placeholder="admin@meatzone.uz"
+                  className="w-full bg-bg-surface2 border border-ink-line text-ink rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-ink-mute"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Пароль</label>
+              <label className="block text-sm font-bold text-ink mb-1.5">Пароль</label>
               <div className="relative">
-                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-mute" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={e => setFormData(f => ({ ...f, password: e.target.value }))}
                   placeholder="Введите пароль"
-                  className="w-full bg-[#0f172a] border border-gray-600 text-white rounded-lg pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
+                  className="w-full bg-bg-surface2 border border-ink-line text-ink rounded-lg pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-ink-mute"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-mute hover:text-ink tap"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -102,7 +102,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm mt-2"
+              className="w-full bg-primary text-white py-2.5 rounded-lg font-bold hover:bg-primary-600 transition-colors disabled:opacity-50 text-sm mt-2 tap"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -114,7 +114,7 @@ export default function AdminLogin() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-600 mt-6">
+        <p className="text-center text-xs text-ink-mute mt-6">
           Защищённая зона. Несанкционированный доступ запрещён.
         </p>
       </div>

@@ -23,7 +23,7 @@ const fileFormat = winston.format.combine(
 // Create logger instance
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
-  defaultMeta: { service: 'pneumax-api' },
+  defaultMeta: { service: 'MeatZone-api' },
   transports: [
     // Error log file
     new winston.transports.File({

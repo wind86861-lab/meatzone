@@ -330,6 +330,22 @@ router.post('/:id/confirm', protect, admin, async (req, res) => {
 });
 
 // =====================================================
+// PUBLIC: get orders by customer phone (no auth)
+// =====================================================
+router.get('/by-phone/:phone', async (req, res) => {
+  try {
+    const phone = req.params.phone.replace(/\s/g, '');
+    const orders = await Order.find({ customerPhone: { $regex: phone, $options: 'i' } })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.json({ orders, total: orders.length, page: 1, pages: 1 });
+  } catch (error) {
+    console.error('Get orders by phone error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// =====================================================
 // EXISTING ENDPOINTS (Updated for Stage 1)
 // =====================================================
 
