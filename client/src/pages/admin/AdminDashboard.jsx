@@ -49,7 +49,7 @@ export default function AdminDashboard() {
 
   const fmt = (n) => Number(n || 0).toLocaleString('ru-RU')
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" /></div>
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>
 
   const s = data?.summary || {}
 
@@ -67,10 +67,10 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Панель управления</h1>
-          <p className="text-gray-500 mt-1">Обзор e-commerce</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-ink font-display tracking-wide">Панель управления</h1>
+          <p className="text-ink-dim mt-1">Обзор e-commerce</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-ink-dim">
           <Activity size={16} />
           <span>{new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </div>
@@ -81,14 +81,14 @@ export default function AdminDashboard() {
         {mainCards.map((card) => {
           const Icon = card.icon
           return (
-            <Link key={card.name} to={card.link} className="group relative overflow-hidden bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+            <Link key={card.name} to={card.link} className="group relative overflow-hidden bg-bg-surface rounded-2xl p-5 shadow-card border border-ink-line hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
               <div className="flex items-start justify-between mb-3">
                 <div className={`bg-gradient-to-br ${card.color} p-2.5 rounded-xl shadow-lg`}><Icon className="text-white" size={20} /></div>
-                <ArrowUpRight size={16} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
+                <ArrowUpRight size={16} className="text-ink-line group-hover:text-ink-dim transition-colors" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{card.value}</p>
-              <p className="text-sm text-gray-500 mt-0.5">{card.name}</p>
-              {card.sub && <p className="text-xs text-gray-400 mt-1">{card.sub}</p>}
+              <p className="text-2xl font-bold text-ink font-display">{card.value}</p>
+              <p className="text-sm text-ink-dim mt-0.5">{card.name}</p>
+              {card.sub && <p className="text-xs text-ink-mute mt-1">{card.sub}</p>}
               <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${card.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
             </Link>
           )
@@ -98,10 +98,10 @@ export default function AdminDashboard() {
       {/* Revenue chart + Recent Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue by month */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border p-5">
+        <div className="lg:col-span-2 bg-bg-surface rounded-2xl shadow-card border border-ink-line p-5">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 size={18} className="text-emerald-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Выручка по месяцам</h2>
+            <h2 className="text-lg font-semibold text-ink">Выручка по месяцам</h2>
           </div>
           <div className="flex items-end gap-2 h-48">
             {Array.from({ length: 12 }, (_, i) => {
@@ -111,10 +111,10 @@ export default function AdminDashboard() {
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full flex flex-col items-center justify-end h-40">
-                    {false && <span className="text-[10px] text-gray-500 mb-1">{(rev / 1000000).toFixed(1)}M</span>}
-                    <div className={`w-full max-w-[32px] rounded-t-lg transition-all ${rev > 0 ? 'bg-gradient-to-t from-emerald-500 to-emerald-400' : 'bg-gray-100'}`} style={{ height: `${Math.max(h, 4)}%` }} />
+                    {false && <span className="text-[10px] text-ink-mute mb-1">{(rev / 1000000).toFixed(1)}M</span>}
+                    <div className={`w-full max-w-[32px] rounded-t-lg transition-all ${rev > 0 ? 'bg-gradient-to-t from-emerald-500 to-emerald-400' : 'bg-bg-surface2'}`} style={{ height: `${Math.max(h, 4)}%` }} />
                   </div>
-                  <span className="text-[10px] text-gray-500">{MONTH_NAMES[i]}</span>
+                  <span className="text-[10px] text-ink-mute">{MONTH_NAMES[i]}</span>
                 </div>
               )
             })}
@@ -122,68 +122,68 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent Orders */}
-        <div className="bg-white rounded-2xl shadow-sm border">
-          <div className="flex items-center justify-between p-5 border-b">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><ShoppingBag size={16} className="text-blue-600" /> Новые заказы</h2>
-            <Link to="/admin/orders" className="text-sm text-blue-600 flex items-center gap-1"><ArrowRight size={14} /></Link>
+        <div className="bg-bg-surface rounded-2xl shadow-card border border-ink-line">
+          <div className="flex items-center justify-between p-5 border-b border-ink-line">
+            <h2 className="font-semibold text-ink flex items-center gap-2"><ShoppingBag size={16} className="text-blue-600" /> Новые заказы</h2>
+            <Link to="/admin/orders" className="text-sm text-primary flex items-center gap-1"><ArrowRight size={14} /></Link>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-ink-line">
             {recentOrders.length > 0 ? recentOrders.map(order => (
-              <Link key={order._id} to={`/admin/orders/${order._id}`} className="p-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+              <Link key={order._id} to={`/admin/orders/${order._id}`} className="p-3 flex items-center justify-between hover:bg-bg-surface2 transition-colors">
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-900 text-sm truncate">{order.customerName || '—'}</p>
-                  <p className="text-xs text-gray-400">{order.customerPhone}</p>
+                  <p className="font-medium text-ink text-sm truncate">{order.customerName || '—'}</p>
+                  <p className="text-xs text-ink-mute">{order.customerPhone}</p>
                 </div>
                 <div className="text-right shrink-0 ml-2">
-                  <p className="font-bold text-sm">{fmt(order.totalPrice)}</p>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[order.status] || 'bg-gray-100'}`}>
+                  <p className="font-bold text-sm text-ink">{fmt(order.totalPrice)}</p>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[order.status] || 'bg-bg-surface2'}`}>
                     {STATUS_LABELS[order.status] || order.status}
                   </span>
                 </div>
               </Link>
-            )) : <div className="p-6 text-center text-gray-400 text-sm">Нет заказов</div>}
+            )) : <div className="p-6 text-center text-ink-mute text-sm">Нет заказов</div>}
           </div>
         </div>
       </div>
 
-      {/* Bottom row: Top Products + Districts + Premium */}
+      {/* Bottom row: Top Products + Districts + Payment */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Top Products */}
-        <div className="bg-white rounded-2xl shadow-sm border p-5">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3"><Package size={16} className="text-violet-600" /> Топ товары</h2>
+        <div className="bg-bg-surface rounded-2xl shadow-card border border-ink-line p-5">
+          <h2 className="font-semibold text-ink flex items-center gap-2 mb-3"><Package size={16} className="text-primary" /> Топ товары</h2>
           <div className="space-y-2">
             {(data?.topProducts || []).slice(0, 5).map((p, i) => (
               <div key={i} className="flex items-center justify-between text-sm">
-                <span className="text-gray-700 truncate flex-1">{i + 1}. {p.name}</span>
-                <span className="font-bold text-gray-900 ml-2">{p.totalSold} шт</span>
+                <span className="text-ink-dim truncate flex-1">{i + 1}. {p.name}</span>
+                <span className="font-bold text-ink ml-2">{p.totalSold} шт</span>
               </div>
             ))}
-            {(!data?.topProducts || data.topProducts.length === 0) && <p className="text-gray-400 text-sm">Нет данных</p>}
+            {(!data?.topProducts || data.topProducts.length === 0) && <p className="text-ink-mute text-sm">Нет данных</p>}
           </div>
         </div>
 
         {/* Districts */}
-        <div className="bg-white rounded-2xl shadow-sm border p-5">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3"><MapPin size={16} className="text-blue-600" /> Районы</h2>
+        <div className="bg-bg-surface rounded-2xl shadow-card border border-ink-line p-5">
+          <h2 className="font-semibold text-ink flex items-center gap-2 mb-3"><MapPin size={16} className="text-amber-600" /> Районы</h2>
           <div className="space-y-2">
             {(data?.ordersByDistrict || []).slice(0, 5).map((d, i) => (
               <div key={i} className="flex items-center justify-between text-sm">
-                <span className="text-gray-700 truncate flex-1">{d._id}</span>
-                <span className="font-bold text-gray-900 ml-2">{d.count}</span>
+                <span className="text-ink-dim truncate flex-1">{d._id}</span>
+                <span className="font-bold text-ink ml-2">{d.count}</span>
               </div>
             ))}
-            {(!data?.ordersByDistrict || data.ordersByDistrict.length === 0) && <p className="text-gray-400 text-sm">Нет данных</p>}
+            {(!data?.ordersByDistrict || data.ordersByDistrict.length === 0) && <p className="text-ink-mute text-sm">Нет данных</p>}
           </div>
         </div>
 
         {/* Payment methods */}
-        <div className="bg-white rounded-2xl shadow-sm border p-5">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-3"><CreditCard size={16} className="text-blue-600" /> Оплата</h2>
+        <div className="bg-bg-surface rounded-2xl shadow-card border border-ink-line p-5">
+          <h2 className="font-semibold text-ink flex items-center gap-2 mb-3"><CreditCard size={16} className="text-emerald-600" /> Оплата</h2>
           <div className="space-y-3">
             {(data?.ordersByPayment || []).map((p, i) => (
               <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-600 uppercase">{p._id}</span>
-                <span className="font-bold">{p.count}</span>
+                <span className="text-ink-dim uppercase">{p._id}</span>
+                <span className="font-bold text-ink">{p.count}</span>
               </div>
             ))}
           </div>
