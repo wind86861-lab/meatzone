@@ -111,7 +111,7 @@ export default function AdminDashboard() {
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full flex flex-col items-center justify-end h-40">
-                    {false && (<span className="text-[10px] text-gray-500 mb-1">{(rev / 1000000).toFixed(1)}M</span>}
+                    {false && <span className="text-[10px] text-gray-500 mb-1">{(rev / 1000000).toFixed(1)}M</span>}
                     <div className={`w-full max-w-[32px] rounded-t-lg transition-all ${rev > 0 ? 'bg-gradient-to-t from-emerald-500 to-emerald-400' : 'bg-gray-100'}`} style={{ height: `${Math.max(h, 4)}%` }} />
                   </div>
                   <span className="text-[10px] text-gray-500">{MONTH_NAMES[i]}</span>
