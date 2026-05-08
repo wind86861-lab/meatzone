@@ -22,7 +22,13 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       useAuthStore.getState().logout()
-      window.location.href = '/admin/login'
+      // Only redirect to admin login for dashboard routes.
+      // Public pages (checkout, home, catalog, service, orders) handle 401 gracefully.
+      const path = window.location.pathname
+      const isProtectedRoute = path.startsWith('/admin') || path.startsWith('/driver') || path.startsWith('/operator')
+      if (isProtectedRoute) {
+        window.location.href = '/admin/login'
+      }
     }
     return Promise.reject(error)
   }
@@ -32,6 +38,7 @@ export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/register', data),
   getMe: () => api.get('/auth/me'),
+  telegramInit: (initData) => api.post('/auth/telegram/init', { initData }),
 }
 
 export const customersAPI = {
@@ -130,12 +137,12 @@ export const pageContentAPI = {
 
 export const uploadAPI = {
   single: (formData) => api.post('/upload', formData, {
-    headers: { 'Content-Type': undefined },
     timeout: 60000,
+    headers: { 'Content-Type': undefined },
   }),
   multiple: (formData) => api.post('/upload/multiple', formData, {
-    headers: { 'Content-Type': undefined },
     timeout: 60000,
+    headers: { 'Content-Type': undefined },
   }),
 }
 
@@ -149,20 +156,67 @@ export const teamAPI = {
 
 export const ordersAPI = {
   getAll: (params) => api.get('/orders', { params }),
+  getStats: () => api.get('/orders/stats'),
   getById: (id) => api.get(`/orders/${id}`),
   getByPhone: (phone) => api.get(`/orders/by-phone/${encodeURIComponent(phone)}`),
   create: (data) => api.post('/orders', data),
   createOrder: (data) => api.post('/orders/create', data),
   update: (id, data) => api.put(`/orders/${id}`, data),
   confirm: (id, data) => api.post(`/orders/${id}/confirm`, data),
+  getQr: (id) => api.get(`/orders/${id}/qr`),
   delete: (id) => api.delete(`/orders/${id}`),
+  updateStatus: (id, data) => api.put(`/orders/${id}/status`, data),
+  getMyOrders: () => api.get('/orders/my-orders'),
+  pay: (id, data) => api.post(`/orders/${id}/pay`, data),
+  serviceInfo: (token) => api.get(`/orders/service/${token}`),
+  refund: (id, data) => api.post(`/orders/${id}/refund`, data),
 }
 
 export const usersAPI = {
   getAll: (params) => api.get('/auth/admin/users', { params }),
   setPremium: (id, data) => api.post(`/auth/admin/users/${id}/premium`, data),
   setRole: (id, data) => api.put(`/auth/admin/users/${id}/role`, data),
+  updateRole: (id, role) => api.put(`/auth/admin/users/${id}/role`, { role }),
+  updateStatus: (id, isActive) => api.put(`/auth/admin/users/${id}/status`, { isActive }),
   broadcast: (data) => api.post('/auth/admin/broadcast', data),
+}
+
+export const operatorAPI = {
+  getFeed: () => api.get('/orders/operator/feed'),
+  getDrivers: () => api.get('/orders/operator/drivers'),
+  assignDriver: (orderId, driverId) => api.post(`/orders/${orderId}/operator/assign-driver`, { driverId }),
+  confirmCash: (orderId) => api.post(`/orders/${orderId}/operator/confirm-cash`),
+  updateStatus: (orderId, status) => api.post(`/orders/${orderId}/operator/status`, { status }),
+}
+
+export const deliveryAPI = {
+  estimate: (data) => api.post('/delivery/estimate', data),
+  getSettings: () => api.get('/delivery/settings'),
+  updateSettings: (data) => api.put('/delivery/settings', data),
+}
+
+export const coinsAPI = {
+  getBalance: () => api.get('/coins/balance'),
+  getHistory: () => api.get('/coins/history'),
+  getSettings: () => api.get('/coins/settings'),
+  updateSettings: (data) => api.put('/coins/settings', data),
+  adminAdjust: (data) => api.post('/coins/admin/adjust', data),
+}
+
+export const bannersAPI = {
+  getAll: () => api.get('/banners'),
+  getAdmin: () => api.get('/banners/admin'),
+  create: (data) => api.post('/banners', data),
+  update: (id, data) => api.put(`/banners/${id}`, data),
+  delete: (id) => api.delete(`/banners/${id}`),
+}
+
+export const promosAPI = {
+  validate: (data) => api.post('/promos/validate', data),
+  getAll: () => api.get('/promos'),
+  create: (data) => api.post('/promos', data),
+  toggle: (id) => api.patch(`/promos/${id}/toggle`),
+  delete: (id) => api.delete(`/promos/${id}`),
 }
 
 export default api

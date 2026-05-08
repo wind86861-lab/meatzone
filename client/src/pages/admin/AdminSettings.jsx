@@ -161,7 +161,7 @@ export default function AdminSettings() {
                         value={settings[field.key] || ''}
                         onChange={e => updateSetting(field.key, e.target.value)}
                         placeholder={field.placeholder || ''}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         rows={3}
                       />
                     ) : (
@@ -170,7 +170,7 @@ export default function AdminSettings() {
                         value={settings[field.key] || ''}
                         onChange={e => updateSetting(field.key, e.target.value)}
                         placeholder={field.placeholder || ''}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     )}
                   </div>

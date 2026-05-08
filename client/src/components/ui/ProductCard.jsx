@@ -3,6 +3,7 @@ import { Plus, Star, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from './index'
 import { useCart } from '../../store/cartStore'
+import { useToastStore } from '../../store/toastStore'
 import { formatPrice, haptic, cn } from '../../utils/format'
 
 /* Hook: returns qty in cart for a given product id */
@@ -14,10 +15,12 @@ function useCartQty(id) {
 export function ProductCardH({ product, onClick }) {
   const add = useCart((s) => s.add)
   const qty = useCartQty(product.id)
+  const showToast = useToastStore(s => s.show)
   const handleAdd = (e) => {
     e.stopPropagation()
     add(product)
     haptic('light')
+    showToast(product.name, product.emoji || '🥩')
   }
   return (
     <motion.div
@@ -29,9 +32,13 @@ export function ProductCardH({ product, onClick }) {
       <div className="relative h-[128px] bg-gradient-to-br from-bg-surface3 to-bg-surface2 flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 stripes opacity-[0.35]" />
         <div className="absolute -inset-x-6 -bottom-6 h-12 bg-gradient-to-t from-black/40 to-transparent" />
-        <div className="text-[60px] drop-shadow-[0_8px_18px_rgba(0,0,0,.55)] translate-y-1 group-hover:scale-105 transition-transform duration-300">
-          {product.emoji}
-        </div>
+        {product.images?.[0] ? (
+          <img src={product.images[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        ) : (
+          <div className="text-[60px] drop-shadow-[0_8px_18px_rgba(0,0,0,.55)] translate-y-1 group-hover:scale-105 transition-transform duration-300">
+            {product.emoji}
+          </div>
+        )}
 
         {/* Badge top-left */}
         {product.badge && (
@@ -40,13 +47,6 @@ export function ProductCardH({ product, onClick }) {
           </div>
         )}
 
-        {/* Rating chip top-right */}
-        {product.rating && (
-          <div className="absolute top-2 right-2 z-[1] flex items-center gap-0.5 bg-black/55 backdrop-blur-sm border border-white/10 rounded-md px-1.5 h-5 text-[10px] font-bold text-white">
-            <Star size={9} className="fill-amber text-amber" strokeWidth={0} />
-            {product.rating}
-          </div>
-        )}
       </div>
 
       {/* Body */}
@@ -64,6 +64,7 @@ export function ProductCardH({ product, onClick }) {
             <div className="font-display text-[18px] text-ink tabular leading-none mt-1 truncate">
               {formatPrice(product.price)}
               <span className="font-body text-[9px] text-ink-mute font-semibold ml-0.5">so'm</span>
+              <span className="font-body text-[9px] text-ink-mute font-semibold ml-0.5">/ {product.unit === 'kg' ? 'kg' : 'dona'}</span>
             </div>
           </div>
 
@@ -78,10 +79,12 @@ export function ProductCardH({ product, onClick }) {
 export function ProductCardV({ product, onClick }) {
   const add = useCart((s) => s.add)
   const qty = useCartQty(product.id)
+  const showToast = useToastStore(s => s.show)
   const handleAdd = (e) => {
     e.stopPropagation()
     add(product)
     haptic('light')
+    showToast(product.name, product.emoji || '🥩')
   }
 
   const discount = product.old ? Math.round((1 - product.price / product.old) * 100) : null
@@ -99,15 +102,19 @@ export function ProductCardV({ product, onClick }) {
         {/* Bottom darken for badge legibility */}
         <div className="absolute -inset-x-6 -bottom-6 h-16 bg-gradient-to-t from-black/45 to-transparent" />
 
-        {/* Emoji as product art */}
+        {/* Product image or emoji */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            whileHover={{ scale: 1.06, rotate: -3 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="text-[68px] drop-shadow-[0_10px_24px_rgba(0,0,0,.55)] translate-y-1"
-          >
-            {product.emoji}
-          </motion.div>
+          {product.images?.[0] ? (
+            <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <motion.div
+              whileHover={{ scale: 1.06, rotate: -3 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              className="text-[68px] drop-shadow-[0_10px_24px_rgba(0,0,0,.55)] translate-y-1"
+            >
+              {product.emoji}
+            </motion.div>
+          )}
         </div>
 
         {/* Badge — top-left */}
@@ -124,13 +131,6 @@ export function ProductCardV({ product, onClick }) {
           </div>
         )}
 
-        {/* Rating chip — top-right */}
-        {product.rating && (
-          <div className="absolute top-2.5 right-2.5 z-[1] flex items-center gap-0.5 bg-black/55 backdrop-blur-sm border border-white/10 rounded-md px-1.5 h-5 text-[10px] font-bold text-white">
-            <Star size={10} className="fill-amber text-amber" strokeWidth={0} />
-            {product.rating}
-          </div>
-        )}
 
         {/* Floating add button — sits on the image edge */}
         <button
@@ -176,14 +176,14 @@ export function ProductCardV({ product, onClick }) {
           {product.name}
         </div>
         <div className="text-[10.5px] text-ink-mute font-medium mb-2.5 line-clamp-1">
-          {product.meta}{product.reviews ? ` · ${product.reviews} baho` : ''}
+          {product.meta}
         </div>
 
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <div className="font-display text-[22px] text-ink tabular leading-none">
             {formatPrice(product.price)}
           </div>
-          <div className="font-body text-[10px] text-ink-mute font-semibold leading-none">so'm</div>
+          <div className="font-body text-[10px] text-ink-mute font-semibold leading-none">so'm / {product.unit === 'kg' ? 'kg' : 'dona'}</div>
           {product.old && (
             <div className="text-[10px] text-ink-mute line-through tabular leading-none ml-auto">
               {formatPrice(product.old)}
@@ -236,8 +236,12 @@ export function CategoryTile({ category, active, onClick }) {
         active ? 'border-primary' : 'border-ink-line'
       )}
     >
-      <div className={cn('aspect-square flex items-center justify-center relative bg-gradient-to-br', category.gradient)}>
-        <span className="text-[40px]">{category.emoji}</span>
+      <div className={cn('aspect-square flex items-center justify-center relative bg-gradient-to-br overflow-hidden', category.gradient)}>
+        {category.image ? (
+          <img src={category.image} alt={category.label} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-[40px]">{category.emoji}</span>
+        )}
         <span className="absolute top-1.5 right-1.5 bg-black/50 text-ink-dim text-[9px] font-bold px-1.5 py-0.5 rounded">
           {category.count}
         </span>

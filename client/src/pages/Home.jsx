@@ -5,14 +5,10 @@ import { TopBar, SearchBar } from '../components/layout/TopBar'
 import BottomNav from '../components/layout/BottomNav'
 import { ProductCardH, CategoryTile, PromoCard } from '../components/ui/ProductCard'
 import { SectionHeader, Skeleton } from '../components/ui'
-import { productsAPI, categoriesAPI } from '../services/api'
+import { productsAPI, categoriesAPI, bannersAPI } from '../services/api'
+import { useLangStore } from '../store/langStore'
+import { t } from '../utils/i18n'
 import { haptic } from '../utils/format'
-
-const PROMOS = [
-  { id: 1, tag: 'Bugungi taklif', title: "Mol go'shti\n−15%", sub: 'Cheklangan miqdorda', emoji: '🥩', variant: 'red' },
-  { id: 2, tag: 'Yetkazish', title: 'Bepul\nyetkazish', sub: "100 000 so'mdan", emoji: '🚚', variant: 'dark' },
-  { id: 3, tag: 'Haftalik taklif', title: 'Kolbasa\n−20%', sub: 'Shanba–yakshanba', emoji: '🌭', variant: 'amber' },
-]
 
 const EMOJI_MAP = {
   beef: '🥩', mutton: '🐑', chicken: '🍗', sausage: '🌭', ready: '🥘', frozen: '❄️',
@@ -21,21 +17,24 @@ const EMOJI_MAP = {
 function adaptProduct(p) {
   const name = typeof p.name === 'string' ? p.name : (p.name?.uz || p.name?.ru || p.name?.en || 'Mahsulot')
   const meta = p.stock ? `${p.stock} ta qoldi` : ''
-  const badge = p.discountPrice && p.price > p.discountPrice
-    ? { tone: 'red', label: `−${Math.round((1 - p.discountPrice / p.price) * 100)}%` }
+  const finalPrice = p.finalPrice ?? p.price
+  const hasDiscount = finalPrice < p.price
+  const badge = hasDiscount
+    ? { tone: 'red', label: `−${Math.round((1 - finalPrice / p.price) * 100)}%` }
     : (p.isFeatured ? { tone: 'green', label: 'HIT' } : null)
   return {
     id: p._id || p.id,
     name,
     meta,
     emoji: EMOJI_MAP[p.category?.slug || p.cat] || '🥩',
-    price: p.discountPrice || p.price,
-    old: p.discountPrice ? p.price : null,
-    cat: p.category?.slug || p.cat,
+    price: finalPrice,
+    old: hasDiscount ? p.price : null,
+    cat: p.category?._id || p.category?.slug || p.cat,
     badge,
     rating: p.rating || 4.5,
     reviews: p.reviews || 12,
     desc: typeof p.description === 'string' ? p.description : (p.description?.uz || p.description?.ru || p.description?.en || ''),
+    images: p.images || [],
   }
 }
 
@@ -44,17 +43,33 @@ function adaptCategory(c) {
     id: c.slug || c._id || c.id,
     label: typeof c.name === 'string' ? c.name : (c.name?.uz || c.name?.ru || c.name?.en || 'Kategoriya'),
     emoji: EMOJI_MAP[c.slug] || '🥩',
+    image: c.image || '',
     count: c.count || 0,
     gradient: 'from-[#1A0A0A] to-[#2D1510]',
   }
 }
 
+function adaptBanner(b) {
+  return {
+    id: b._id,
+    tag: b.tag || 'Taklif',
+    title: b.title || '',
+    sub: b.subtitle || '',
+    emoji: b.emoji || '🥩',
+    variant: b.variant || 'red',
+    image: b.image || '',
+    link: b.link || '/catalog',
+  }
+}
+
 export default function Home() {
   const navigate = useNavigate()
+  const { lang } = useLangStore()
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('all')
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
+  const [banners, setBanners] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -62,10 +77,12 @@ export default function Home() {
     Promise.all([
       categoriesAPI.getAll().then(r => r.data),
       productsAPI.getAll({ limit: 20 }).then(r => r.data),
-    ]).then(([catsRes, prodsRes]) => {
+      bannersAPI.getAll().then(r => r.data).catch(() => []),
+    ]).then(([catsRes, prodsRes, bannersRes]) => {
       if (!mounted) return
-      setCategories((catsRes.categories || []).map(adaptCategory))
+      setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).map(adaptCategory))
       setProducts((prodsRes.products || []).map(adaptProduct))
+      setBanners((bannersRes || []).map(adaptBanner))
       setLoading(false)
     }).catch(() => setLoading(false))
     return () => { mounted = false }
@@ -87,18 +104,22 @@ export default function Home() {
       {/* Promos */}
       <div className="px-4 pt-4 pb-1">
         <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
-          {PROMOS.map(p => (
-            <div key={p.id} className="snap-start" onClick={() => { haptic('light'); navigate('/catalog') }}>
+          {banners.length > 0 ? banners.map(p => (
+            <div key={p.id} className="snap-start" onClick={() => { haptic('light'); navigate(p.link || '/catalog') }}>
               <PromoCard promo={p} />
             </div>
-          ))}
+          )) : (
+            <div className="flex gap-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="w-[200px] h-[120px] rounded-xl shrink-0" />)}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Categories */}
-      <SectionHeader title="Kategoriyalar" />
+      <SectionHeader title={t(lang, 'home.categories')} />
       <div className="px-4 grid grid-cols-3 gap-2.5 mb-1">
-        <CategoryTile category={{ id: 'all', label: 'Barchasi', emoji: '🥩', count: products.length, gradient: 'from-[#1A0A0A] to-[#2D1510]' }}
+        <CategoryTile category={{ id: 'all', label: t(lang, 'home.all'), emoji: '🥩', count: products.length, gradient: 'from-[#1A0A0A] to-[#2D1510]' }}
           active={cat === 'all'} onClick={() => { haptic('light'); setCat('all') }} />
         {loading ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="aspect-[1/1.1] rounded-md" />) :
           categories.map(c => (
@@ -107,7 +128,7 @@ export default function Home() {
       </div>
 
       {/* Top picks horizontal scroll */}
-      <SectionHeader title="Top mahsulotlar" action="Barchasi" onAction={() => navigate('/catalog')} />
+      <SectionHeader title={t(lang, 'home.topProducts')} action={t(lang, 'home.all')} onAction={() => navigate('/catalog')} />
       <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory px-4 pb-3">
         {loading ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="w-[164px] h-[220px] rounded-xl shrink-0" />) :
           picks.map(p => (
@@ -118,7 +139,7 @@ export default function Home() {
       </div>
 
       {/* Featured / Quick picks grid */}
-      <SectionHeader title="Siz uchun" />
+      <SectionHeader title={t(lang, 'home.forYou')} />
       <div className="px-4 grid grid-cols-2 gap-3 pb-6">
         {loading ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="aspect-[4/5] rounded-xl" />) :
           filtered.slice(0, 6).map((p, i) => (

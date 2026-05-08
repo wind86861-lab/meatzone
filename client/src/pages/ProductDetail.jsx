@@ -6,6 +6,8 @@ import { TopBar } from '../components/layout/TopBar'
 import { Button, Badge, Chip, Skeleton } from '../components/ui'
 import { productsAPI } from '../services/api'
 import { useCart } from '../store/cartStore'
+import { useLangStore } from '../store/langStore'
+import { t } from '../utils/i18n'
 import { formatSum, haptic, cn } from '../utils/format'
 
 const EMOJI_MAP = {
@@ -15,21 +17,24 @@ const EMOJI_MAP = {
 function adaptProduct(p) {
   const name = typeof p.name === 'string' ? p.name : (p.name?.uz || p.name?.ru || p.name?.en || 'Mahsulot')
   const meta = p.stock ? `${p.stock} ta qoldi` : ''
-  const badge = p.discountPrice && p.price > p.discountPrice
-    ? { tone: 'red', label: `−${Math.round((1 - p.discountPrice / p.price) * 100)}%` }
+  const finalPrice = p.finalPrice ?? p.price
+  const hasDiscount = finalPrice < p.price
+  const badge = hasDiscount
+    ? { tone: 'red', label: `−${Math.round((1 - finalPrice / p.price) * 100)}%` }
     : (p.isFeatured ? { tone: 'green', label: 'HIT' } : null)
   return {
     id: p._id || p.id,
     name,
     meta,
     emoji: EMOJI_MAP[p.category?.slug || p.cat] || '🥩',
-    price: p.discountPrice || p.price,
-    old: p.discountPrice ? p.price : null,
+    price: finalPrice,
+    old: hasDiscount ? p.price : null,
     cat: p.category?.slug || p.cat,
     badge,
     rating: p.rating || 4.5,
     reviews: p.reviews || 12,
     desc: typeof p.description === 'string' ? p.description : (p.description?.uz || p.description?.ru || p.description?.en || ''),
+    images: p.images || [],
   }
 }
 
@@ -37,6 +42,7 @@ export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const add = useCart(s => s.add)
+  const { lang } = useLangStore()
   const [qty, setQty] = useState(1)
   const [liked, setLiked] = useState(false)
   const [product, setProduct] = useState(null)
@@ -97,9 +103,13 @@ export default function ProductDetail() {
     >
       {/* Hero image area */}
       <div className="relative bg-bg-surface3 h-[40vh] flex items-center justify-center overflow-hidden">
-        <div className="text-[100px] drop-shadow-[0_8px_24px_rgba(0,0,0,.5)]">
-          {product.emoji}
-        </div>
+        {product.images?.[0] ? (
+          <img src={product.images[0]} alt={product.name?.uz} className="w-full h-full object-cover" />
+        ) : (
+          <div className="text-[100px] drop-shadow-[0_8px_24px_rgba(0,0,0,.5)]">
+            {product.emoji}
+          </div>
+        )}
         <button
           onClick={() => navigate(-1)}
           className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/30 backdrop-blur border border-white/10 flex items-center justify-center text-white tap"
@@ -127,18 +137,11 @@ export default function ProductDetail() {
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs text-ink-dim font-medium capitalize">{product.cat}</span>
           <span className="text-ink-line">·</span>
-          <span className="text-xs text-ink-dim font-medium">{product.meta}</span>
+          <span className="text-xs text-ink-dim font-medium">{product.stock ? `${product.stock} ${t(lang, 'product.inStock')}` : product.meta}</span>
         </div>
 
         <h1 className="font-display text-3xl tracking-wide text-ink mb-2">{product.name}</h1>
 
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center gap-1">
-            <Star size={14} className="text-amber fill-amber" />
-            <span className="text-sm font-bold text-ink">{product.rating}</span>
-          </div>
-          <span className="text-xs text-ink-dim">({product.reviews} baho)</span>
-        </div>
 
         <div className="flex items-baseline gap-2 mb-5">
           <div className="font-display text-4xl text-ink tabular">{formatSum(product.price)}</div>
@@ -152,7 +155,7 @@ export default function ProductDetail() {
 
         {/* Qty selector */}
         <div className="flex items-center justify-between bg-bg-surface rounded-lg border border-ink-line p-3 mb-6">
-          <span className="text-sm font-bold text-ink">Miqdor</span>
+          <span className="text-sm font-bold text-ink">{t(lang, 'product.qty')}</span>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setQty(Math.max(1, qty - 1))}
@@ -173,7 +176,7 @@ export default function ProductDetail() {
         {/* Related */}
         {related.length > 0 && (
           <>
-            <h3 className="font-display text-lg text-ink mb-3">O'xshash mahsulotlar</h3>
+            <h3 className="font-display text-lg text-ink mb-3">{t(lang, 'product.similar')}</h3>
             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
               {related.map(r => (
                 <button
@@ -181,7 +184,13 @@ export default function ProductDetail() {
                   onClick={() => { haptic('light'); navigate(`/product/${r.id}`) }}
                   className="shrink-0 w-[120px] bg-bg-surface rounded-lg border border-ink-line p-2.5 text-left tap"
                 >
-                  <div className="text-3xl mb-1.5">{r.emoji}</div>
+                  {r.images?.[0] ? (
+                    <div className="w-full h-14 mb-1.5 rounded-md overflow-hidden">
+                      <img src={r.images[0]} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="text-3xl mb-1.5">{r.emoji}</div>
+                  )}
                   <div className="text-[11px] font-bold text-ink line-clamp-1">{r.name}</div>
                   <div className="text-[11px] text-ink-dim mt-0.5 tabular">{formatSum(r.price)}</div>
                 </button>
@@ -195,12 +204,12 @@ export default function ProductDetail() {
       <div className="fixed bottom-0 inset-x-0 z-40 bg-bg-surface/95 backdrop-blur-lg border-t border-ink-line px-4 py-3 pb-safe">
         <div className="max-w-[480px] mx-auto flex items-center gap-3">
           <div className="flex-1">
-            <div className="text-[11px] text-ink-dim">Jami</div>
+            <div className="text-[11px] text-ink-dim">{t(lang, 'product.total')}</div>
             <div className="font-display text-2xl text-ink tabular">{formatSum(product.price * qty)}</div>
           </div>
           <Button variant="primary" size="lg" className="flex-[1.5] gap-2" onClick={handleAdd}>
             <ShoppingCart size={18} />
-            Savatga qo'shish
+            {t(lang, 'product.addToCart')}
           </Button>
         </div>
       </div>

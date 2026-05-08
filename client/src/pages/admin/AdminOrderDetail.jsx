@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ordersAPI } from '../../services/api'
-import { ArrowLeft, User, Phone, MapPin, CreditCard, Clock, CheckCircle, Package, MessageSquare, ExternalLink, RotateCcw, X } from 'lucide-react'
-import api from '../../services/api'
+import api, { ordersAPI, usersAPI } from '../../services/api'
+import { ArrowLeft, CheckCircle, Clock, CreditCard, ExternalLink, MapPin, MessageSquare, Package, Phone, Printer, QrCode, RotateCcw, Trash2, Truck, User, X } from 'lucide-react'
 
 const STATUS_LABELS = {
   new: { label: 'Новый', color: 'bg-blue-100 text-blue-700' },
@@ -23,13 +22,22 @@ export default function AdminOrderDetail() {
   const [deliveryTime, setDeliveryTime] = useState('')
   const [adminNotes, setAdminNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [drivers, setDrivers] = useState([])
+  const [selectedDriver, setSelectedDriver] = useState('')
+  const [assigning, setAssigning] = useState(false)
   const [refundModal, setRefundModal] = useState(false)
   const [refundReason, setRefundReason] = useState('')
   const [refunding, setRefunding] = useState(false)
+  const [qrModal, setQrModal] = useState(false)
+  const [qrData, setQrData] = useState(null)
+  const [qrLoading, setQrLoading] = useState(false)
 
   const fmt = (n) => Number(n || 0).toLocaleString('ru-RU')
 
-  useEffect(() => { fetchOrder() }, [id])
+  useEffect(() => {
+    fetchOrder()
+    api.get('/auth/admin/users?role=driver').then(r => setDrivers(r.data?.users || r.data || [])).catch(() => { })
+  }, [id])
 
   const fetchOrder = async () => {
     setLoading(true)
@@ -79,6 +87,120 @@ export default function AdminOrderDetail() {
     } catch { alert('Ошибка') }
   }
 
+  const handleOpenQR = async () => {
+    setQrLoading(true)
+    setQrModal(true)
+    try {
+      const res = await api.get(`/orders/${id}/qr`)
+      setQrData(res.data)
+    } catch { alert('Ошибка генерации QR кода') }
+    setQrLoading(false)
+  }
+
+  const handlePrintQR = () => {
+    const d = new Date(order.createdAt || Date.now())
+    const dateStr = d.toLocaleDateString('ru-RU')
+    const timeStr = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    const checkId = order._id?.slice(-6).toUpperCase()
+    const paid = (order.paymentHistory || []).reduce((s, p) => s + (p.amount || 0), 0)
+    const debt = Math.max(0, (order.totalPrice || 0) - paid)
+
+    const itemLines = items.map((it, i) => {
+      const lt = (it.price || 0) * (it.quantity || 1)
+      return `<div style="font-size:11px;margin-bottom:4px;line-height:1.3">
+        <div style="display:flex;gap:4px">
+          <b>${i + 1}.</b>
+          <span style="flex:1">${it.name}${it.quantity > 1 ? ' ' + it.quantity + 'ta.' : ''}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding-left:16px">
+          <span>${it.quantity} x ${fmt(it.price)}</span>
+          <b>${fmt(lt)} so'm</b>
+        </div>
+      </div>`
+    }).join('')
+
+    const win = window.open('', '_blank')
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Check — Buyurtma #${checkId}</title>
+        <style>
+          @page { margin:0; size:72mm auto; }
+          body { margin:0; font-family:'Courier New',Courier,monospace; font-size:11px; color:#111; background:#fff; width:72mm; padding:8px; }
+          .center { text-align:center; }
+          .logo { font-size:20px; font-weight:900; color:#dc2626; font-family:sans-serif; margin-bottom:0; }
+          .sub { font-size:10px; color:#666; font-family:sans-serif; font-style:italic; }
+          .dashed { border-bottom:2px dashed #333; margin:6px 0; }
+          .section-title { font-weight:bold; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+          .flex { display:flex; justify-content:space-between; }
+          .bold { font-weight:bold; }
+          .qr { text-align:center; margin:8px 0; }
+          .qr img { width:140px; height:140px; }
+          .footer { text-align:center; margin-top:8px; }
+          .footer .thanks { font-size:13px; font-weight:bold; font-style:italic; }
+          .footer .phones { font-size:10px; font-weight:bold; }
+          .footer .quality { font-size:8px; color:#666; font-style:italic; margin-top:4px; }
+          @media print { body { -webkit-print-color-adjust:exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <div class="logo">MeatZone</div>
+          <div class="sub">Fresh food products</div>
+        </div>
+
+        <div class="dashed"></div>
+
+        <div class="flex"><span>Sana:</span><span>${dateStr}</span></div>
+        <div class="flex"><span>Vaqt:</span><span>${timeStr}</span></div>
+        <div class="flex"><span>Check №:</span><span class="bold">ORD-${checkId}</span></div>
+
+        <div class="dashed"></div>
+
+        <div class="section-title">MIJOZ MA'LUMOTLARI:</div>
+        <div>Ism: <b>${order.customerName || '—'}</b></div>
+        <div>Tel: <b>${order.customerPhone || '—'}</b></div>
+
+        <div class="dashed"></div>
+
+        <div class="center section-title">─── MAHSULOTLAR ───</div>
+        ${itemLines}
+
+        <div class="dashed"></div>
+
+        <div class="flex"><span>Buyurtma narxi:</span><span class="bold">${fmt(order.subTotal || order.totalPrice)} so'm</span></div>
+        <div class="flex"><span>To'langan:</span><span>${fmt(paid)} so'm</span></div>
+        <div class="flex bold"><span>Umumiy qarzdorlik:</span><span>${fmt(debt || order.totalPrice)} so'm</span></div>
+
+        <div class="dashed"></div>
+
+        <div class="footer">
+          <div class="thanks">Haridingiz uchun RAHMAT!</div>
+          <div style="font-size:9px;color:#666;margin-top:4px">Murojaat uchun:</div>
+          <div class="phones">+998 90 123-45-67</div>
+          <div class="phones">+998 91 234-56-78</div>
+          <div style="font-size:9px;color:#888;margin-top:4px">${dateStr} ${timeStr}</div>
+        </div>
+
+        <div class="dashed"></div>
+
+        <div class="center quality">
+          Sifatli muzlatilgan mahsulotlar bilan<br>xizmatdamiz!
+        </div>
+
+        <div class="qr">
+          <img src="${qrData.qr}" alt="QR" />
+          <div style="font-size:9px;color:#888">Skanerlang va buyurtmani kuzating</div>
+        </div>
+
+        <script>window.onload = () => { setTimeout(() => window.print(), 300); }<\/script>
+      </body>
+      </html>
+    `)
+    win.document.close()
+  }
+
   if (loading) return <div className="p-12 text-center text-gray-400">Загрузка...</div>
   if (!order) return <div className="p-12 text-center text-gray-400">Заказ не найден</div>
 
@@ -93,9 +215,37 @@ export default function AdminOrderDetail() {
           <h1 className="text-xl font-bold text-gray-900">Заказ ...{order._id.slice(-6)}</h1>
           <p className="text-xs text-gray-500 font-mono">{order._id}</p>
         </div>
-        <span className={`text-sm px-3 py-1 rounded-full font-medium ${(STATUS_LABELS[order.status] || STATUS_LABELS.new).color}`}>
-          {(STATUS_LABELS[order.status] || STATUS_LABELS.new).label}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/admin/orders/${id}/check`)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-900 transition"
+          >
+            <Printer size={15} /> Check chiqarish
+          </button>
+          <button
+            onClick={handleOpenQR}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition"
+          >
+            <QrCode size={15} /> Print QR
+          </button>
+          <span className={`text-sm px-3 py-1 rounded-full font-medium ${(STATUS_LABELS[order.status] || STATUS_LABELS.new).color}`}>
+            {(STATUS_LABELS[order.status] || STATUS_LABELS.new).label}
+          </span>
+          {order.deliveryStatus && (
+            <span className={`text-sm px-3 py-1 rounded-full font-medium flex items-center gap-1 ${order.deliveryStatus === 'pending' ? 'bg-gray-100 text-gray-600' :
+              order.deliveryStatus === 'assigned' ? 'bg-indigo-100 text-indigo-700' :
+                order.deliveryStatus === 'in_transit' ? 'bg-amber-100 text-amber-700' :
+                  order.deliveryStatus === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
+                    'bg-red-100 text-red-700'
+              }`}>
+              <Truck size={14} />
+              {order.deliveryStatus === 'pending' ? 'Ожидает' :
+                order.deliveryStatus === 'assigned' ? 'Назначен' :
+                  order.deliveryStatus === 'in_transit' ? 'В пути' :
+                    order.deliveryStatus === 'delivered' ? 'Доставлен' : 'Не доставлен'}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -145,7 +295,23 @@ export default function AdminOrderDetail() {
                   <p className="font-bold text-sm">{fmt(item.price * item.quantity)} сум</p>
                 </div>
               ))}
-              <div className="flex justify-between pt-3 border-t font-bold">
+              <div className="flex justify-between pt-2 border-t text-sm">
+                <span className="text-gray-500">Подытог:</span>
+                <span className="font-medium">{fmt(order.subTotal || order.totalPrice - (order.deliveryFee || 0))} сум</span>
+              </div>
+              {order.deliveryFee > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Доставка:</span>
+                  <span className="font-medium">{fmt(order.deliveryFee)} сум</span>
+                </div>
+              )}
+              {order.isFreeDelivery && (
+                <div className="flex justify-between text-sm text-emerald-600">
+                  <span>Доставка бесплатно:</span>
+                  <span className="font-medium">0 сум</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t font-bold">
                 <span>Итого:</span>
                 <span>{fmt(order.totalPrice)} сум</span>
               </div>
@@ -204,6 +370,52 @@ export default function AdminOrderDetail() {
             </div>
           </div>
 
+          {/* Driver assignment */}
+          <div className="bg-white rounded-xl border p-5 space-y-3">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><Truck size={16} /> Водитель</h2>
+            {order.assignedDriver ? (
+              <div className="text-sm space-y-1">
+                <p className="font-medium text-gray-900">{order.assignedDriver.name || 'Водитель'}</p>
+                {order.assignedDriver.phone && (
+                  <a href={`tel:${order.assignedDriver.phone}`} className="text-blue-600 flex items-center gap-1">
+                    <Phone size={14} /> {order.assignedDriver.phone}
+                  </a>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500">Водитель не назначен</p>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedDriver}
+                    onChange={e => setSelectedDriver(e.target.value)}
+                    className="flex-1 border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="">Выберите водителя</option>
+                    {drivers.map(d => (
+                      <option key={d._id} value={d._id}>{d.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={async () => {
+                      if (!selectedDriver) return
+                      setAssigning(true)
+                      try {
+                        await api.post(`/orders/${id}/assign-driver`, { driverId: selectedDriver })
+                        fetchOrder()
+                      } catch { alert('Ошибка назначения') }
+                      finally { setAssigning(false) }
+                    }}
+                    disabled={!selectedDriver || assigning}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {assigning ? '...' : 'Назначить'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Confirm + Delivery time */}
           <div className="bg-white rounded-xl border p-5 space-y-3">
             <h2 className="font-bold text-gray-900 flex items-center gap-2"><Clock size={16} /> Подтверждение</h2>
@@ -212,14 +424,14 @@ export default function AdminOrderDetail() {
               type="datetime-local"
               value={deliveryTime}
               onChange={e => setDeliveryTime(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full bg-white text-gray-900 border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
             <label className="block text-xs text-gray-500 font-medium">Заметки</label>
             <textarea
               value={adminNotes}
               onChange={e => setAdminNotes(e.target.value)}
               rows={2}
-              className="w-full border rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full bg-white text-gray-900 border rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
             <button
               onClick={handleConfirm}
@@ -268,6 +480,42 @@ export default function AdminOrderDetail() {
           </div>
         </div>
       </div>
+      {/* QR Print modal */}
+      {qrModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <QrCode size={18} className="text-red-500" /> QR — Buyurtma #{order._id.slice(-6).toUpperCase()}
+              </h3>
+              <button onClick={() => setQrModal(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+
+            {qrLoading ? (
+              <div className="flex flex-col items-center py-10 gap-3">
+                <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-gray-400">Генерация QR...</p>
+              </div>
+            ) : qrData ? (
+              <>
+                <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-center mb-4">
+                  <img src={qrData.qr} alt="QR Code" className="w-52 h-52" />
+                </div>
+                <p className="text-xs text-gray-500 text-center mb-4 break-all">{qrData.url}</p>
+                <button
+                  onClick={handlePrintQR}
+                  className="w-full py-2.5 bg-red-600 text-white rounded-xl font-semibold text-sm hover:bg-red-700 flex items-center justify-center gap-2"
+                >
+                  <QrCode size={16} /> Chop etish (Print)
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+
       {/* Refund modal */}
       {refundModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -283,7 +531,7 @@ export default function AdminOrderDetail() {
               onChange={e => setRefundReason(e.target.value)}
               placeholder="Необязательно..."
               rows={3}
-              className="w-full border rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-red-400 focus:outline-none mb-4"
+              className="w-full bg-white text-gray-900 border rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-red-400 focus:outline-none mb-4"
             />
             <button
               onClick={handleRefund}

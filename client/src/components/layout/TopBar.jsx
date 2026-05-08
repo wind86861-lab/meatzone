@@ -2,6 +2,7 @@ import React from 'react'
 import { ArrowLeft, ShoppingBag, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../store/cartStore'
+import { useLangStore } from '../../store/langStore'
 import { IconButton } from '../ui'
 import { cn } from '../../utils/format'
 
@@ -13,6 +14,7 @@ import { cn } from '../../utils/format'
 export function TopBar({ variant = 'home', title, onBack, children }) {
   const navigate = useNavigate()
   const count = useCart((s) => s.items.reduce((a, i) => a + i.qty, 0))
+  const { lang, toggle } = useLangStore()
 
   return (
     <div className="relative bg-primary-600 px-4 pt-safe pb-4 stripes">
@@ -33,9 +35,10 @@ export function TopBar({ variant = 'home', title, onBack, children }) {
 
         <div className="flex items-center gap-2">
           {variant === 'home' && (
-            <IconButton aria-label="Til">
-              <span className="text-base">🇺🇿</span>
-            </IconButton>
+            <button onClick={toggle}
+              className="h-8 px-2.5 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-bold tracking-wide border border-white/20 transition-colors">
+              {lang === 'uz' ? 'UZ' : lang === 'ru' ? 'RU' : 'EN'}
+            </button>
           )}
           {variant !== 'plain' && (
             <div className="relative">
@@ -58,7 +61,9 @@ export function TopBar({ variant = 'home', title, onBack, children }) {
 }
 
 /* SearchBar inside TopBar */
-export function SearchBar({ value, onChange, placeholder = "Mahsulot qidirish…", readOnly, onClick }) {
+export function SearchBar({ value, onChange, placeholder, readOnly, onClick }) {
+  const { lang } = useLangStore()
+  const ph = placeholder || (lang === 'ru' ? 'Поиск товаров…' : lang === 'en' ? 'Search products…' : "Mahsulot qidirish…")
   return (
     <div
       onClick={onClick}
@@ -72,7 +77,7 @@ export function SearchBar({ value, onChange, placeholder = "Mahsulot qidirish…
         value={value || ''}
         onChange={onChange}
         readOnly={readOnly}
-        placeholder={placeholder}
+        placeholder={ph}
         className="bg-transparent border-0 outline-0 text-white text-sm font-medium w-full placeholder:text-white/45"
       />
     </div>

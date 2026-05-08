@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
+import { useAuthStore } from './store/authStore.js'
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null } }
@@ -28,7 +29,7 @@ class ErrorBoundary extends React.Component {
 }
 
 function Root() {
-  React.useEffect(() => {
+  useEffect(() => {
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp
       tg.ready()
@@ -37,6 +38,15 @@ function Root() {
       if (tg.setBackgroundColor) tg.setBackgroundColor('#F5F0EC')
     }
   }, [])
+
+  // Telegram Mini App auto-login
+  const telegramAutoLogin = useAuthStore(s => s.telegramAutoLogin)
+  useEffect(() => {
+    telegramAutoLogin().then(ok => {
+      if (ok) console.log('[TG] Auto-login success')
+    })
+  }, [telegramAutoLogin])
+
   return <App />
 }
 

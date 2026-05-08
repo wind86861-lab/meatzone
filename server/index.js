@@ -133,6 +133,10 @@ app.use('/api/categories', apiLimiter, require('./routes/categories'));
 app.use('/api/settings', apiLimiter, require('./routes/settings'));
 app.use('/api/upload', apiLimiter, require('./routes/upload'));
 app.use('/api/orders', apiLimiter, require('./routes/orders'));
+app.use('/api/delivery', apiLimiter, require('./routes/delivery'));
+app.use('/api/coins', apiLimiter, require('./routes/coins'));
+app.use('/api/promos', apiLimiter, require('./routes/promos'));
+app.use('/api/banners', apiLimiter, require('./routes/banners'));
 
 // Stage 4: Payment provider webhooks (NO rate limiting — providers need unrestricted access)
 app.use('/api/payme', require('./routes/payme'));
@@ -253,9 +257,19 @@ const server = app.listen(PORT, () => {
   const bot = createBot();
   if (bot) {
     bot.launch()
-      .then(() => {
+      .then(async () => {
         console.log('Telegram bot launched');
         logger.info('Telegram bot launched');
+
+        // Set Web App menu button (appears next to the paperclip icon in chat input)
+        const siteUrl = process.env.SITE_URL || 'https://meatzone.uz';
+        await bot.telegram.setChatMenuButton({
+          menuButton: {
+            type: 'web_app',
+            text: "🛒 Do'kon",
+            web_app: { url: siteUrl },
+          },
+        }).catch((err) => logger.warn('setChatMenuButton failed', { error: err.message }));
       })
       .catch((err) => {
         console.error('Telegram bot launch failed:', err.message);

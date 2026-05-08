@@ -20,6 +20,7 @@ export default function AdminProducts() {
     price: '',
     discountValue: '',
     discountType: 'percentage',
+    unit: 'pcs',
     category: '',
     images: [],
     stock: '',
@@ -74,6 +75,7 @@ export default function AdminProducts() {
       price: '',
       discountValue: '',
       discountType: 'percentage',
+      unit: 'pcs',
       category: '',
       images: [],
       stock: '',
@@ -94,6 +96,7 @@ export default function AdminProducts() {
       price: product.price || '',
       discountValue: product.discountValue || '',
       discountType: product.discountType || 'percentage',
+      unit: product.unit || 'pcs',
       category: subcat?._id || subcat || '',
       images: product.images || [],
       stock: product.stock || '',
@@ -144,11 +147,12 @@ export default function AdminProducts() {
         price: Number(form.price),
         discountValue: form.discountValue ? Number(form.discountValue) : null,
         stock: Number(form.stock) || 0,
+        images: form.images || [],
       }
       if (editing) {
-        await productsAPI.update(editing, data)
+        await productsAPI.update(editing, { ...data, images: form.images || [] })
       } else {
-        await productsAPI.create(data)
+        await productsAPI.create({ ...data, images: form.images || [] })
       }
       setShowModal(false)
       fetchProducts()
@@ -207,13 +211,13 @@ export default function AdminProducts() {
             placeholder="Поиск товаров..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
           />
         </div>
         <select
           value={filterCategory}
           onChange={e => { setFilterCategory(e.target.value); setPage(1) }}
-          className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:min-w-[200px] sm:w-auto"
+          className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:min-w-[200px] sm:w-auto bg-white"
         >
           <option value="">Все категории</option>
           {parentCategories.map(cat => (
@@ -272,10 +276,14 @@ export default function AdminProducts() {
                   </td>
                   <td className="p-4">
                     {product.hasDiscount ? (
-                      <div className="flex flex-col">
-                        <span className="text-gray-700 font-semibold">{product.finalPrice?.toLocaleString()} so'm</span>
-                        <span className="text-xs text-gray-400 line-through">{product.price?.toLocaleString()} so'm</span>
-                        <span className="text-xs text-green-600">-{product.discountType === 'percentage' ? `${product.discountValue}%` : `${product.discountValue?.toLocaleString()} so'm`}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{product.price?.toLocaleString()}</span>
+                        {product.discountValue > 0 && (
+                          <span className="text-xs text-red-500 line-through">
+                            {Math.round(product.price + product.discountValue)?.toLocaleString()}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500">{product.unit === 'kg' ? 'kg' : 'dona'}</span>
                       </div>
                     ) : (
                       <span className="text-gray-700">{product.price?.toLocaleString()} so'm</span>
@@ -323,46 +331,57 @@ export default function AdminProducts() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto p-4 pt-10">
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-4 pt-4 sm:pt-10">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl max-h-[95dvh] flex flex-col">
             <div className="flex items-center justify-between p-5 border-b">
               <h2 className="text-lg font-bold text-gray-900">{editing ? 'Редактировать товар' : 'Добавить товар'}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-5 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-5 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Название товара</label>
                 <div className="space-y-2">
-                  <input placeholder="Nomi (UZ)" value={form.name.uz} onChange={e => setForm(f => ({ ...f, name: { ...f.name, uz: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-                  <input placeholder="Nomi (RU)" value={form.name.ru} onChange={e => setForm(f => ({ ...f, name: { ...f.name, ru: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-                  <input placeholder="Nomi (EN)" value={form.name.en} onChange={e => setForm(f => ({ ...f, name: { ...f.name, en: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                  <input placeholder="Nomi (UZ)" value={form.name.uz} onChange={e => setForm(f => ({ ...f, name: { ...f.name, uz: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required />
+                  <input placeholder="Nomi (RU)" value={form.name.ru} onChange={e => setForm(f => ({ ...f, name: { ...f.name, ru: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required />
+                  <input placeholder="Nomi (EN)" value={form.name.en} onChange={e => setForm(f => ({ ...f, name: { ...f.name, en: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Описание</label>
                 <div className="space-y-2">
-                  <textarea placeholder="Ta'rif (UZ)" value={form.description.uz} onChange={e => setForm(f => ({ ...f, description: { ...f.description, uz: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} />
-                  <textarea placeholder="Ta'rif (RU)" value={form.description.ru} onChange={e => setForm(f => ({ ...f, description: { ...f.description, ru: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} />
-                  <textarea placeholder="Ta'rif (EN)" value={form.description.en} onChange={e => setForm(f => ({ ...f, description: { ...f.description, en: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} />
+                  <textarea placeholder="Ta'rif (UZ)" value={form.description.uz} onChange={e => setForm(f => ({ ...f, description: { ...f.description, uz: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" rows={2} />
+                  <textarea placeholder="Ta'rif (RU)" value={form.description.ru} onChange={e => setForm(f => ({ ...f, description: { ...f.description, ru: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" rows={2} />
+                  <textarea placeholder="Ta'rif (EN)" value={form.description.en} onChange={e => setForm(f => ({ ...f, description: { ...f.description, en: e.target.value } }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" rows={2} />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Цена</label>
-                  <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                  <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Единица измерения</label>
+                  <select
+                    value={form.unit}
+                    onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="pcs">Дона (pcs)</option>
+                    <option value="kg">Килограмм (kg)</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Склад</label>
-                  <input type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Тип скидки</label>
-                  <select value={form.discountType} onChange={e => setForm(f => ({ ...f, discountType: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <select value={form.discountType} onChange={e => setForm(f => ({ ...f, discountType: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     <option value="fixed">Фиксированная сумма</option>
                     <option value="percentage">Процент %</option>
                   </select>
@@ -375,7 +394,7 @@ export default function AdminProducts() {
                     type="number"
                     value={form.discountValue}
                     onChange={e => setForm(f => ({ ...f, discountValue: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     placeholder={form.discountType === 'percentage' ? 'Пример: 10 (для 10%)' : 'Пример: 50000'}
                     max={form.discountType === 'percentage' ? '100' : undefined}
                     min="0"
@@ -399,7 +418,7 @@ export default function AdminProducts() {
                   <select
                     value={formParentCat}
                     onChange={e => { setFormParentCat(e.target.value); setForm(f => ({ ...f, category: '' })) }}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
                     <option value="">Выберите категорию</option>
                     {parentCategories.map(c => <option key={c._id} value={c._id}>{c.name?.uz}</option>)}
@@ -410,7 +429,7 @@ export default function AdminProducts() {
                   <select
                     value={form.category}
                     onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     disabled={!formParentCat}
                   >
                     <option value="">{formParentCat ? 'Выберите подкатегорию' : '← Сначала выберите категорию'}</option>

@@ -28,6 +28,18 @@ export default function AdminLogin() {
 
       const { token, ...user } = response.data
 
+      if (user.role === 'driver') {
+        setAuth(user, token)
+        navigate('/driver')
+        return
+      }
+
+      if (user.role === 'operator') {
+        setAuth(user, token)
+        navigate('/operator')
+        return
+      }
+
       if (user.role !== 'admin') {
         setError('Доступ запрещён. Требуются права администратора.')
         setLoading(false)
@@ -71,7 +83,7 @@ export default function AdminLogin() {
                   value={formData.email}
                   onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
                   placeholder="admin@meatzone.uz"
-                  className="w-full bg-bg-surface2 border border-ink-line text-ink rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-ink-mute"
+                  className="w-full pl-9 pr-3 py-2 bg-white text-gray-900 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
@@ -86,7 +98,7 @@ export default function AdminLogin() {
                   value={formData.password}
                   onChange={e => setFormData(f => ({ ...f, password: e.target.value }))}
                   placeholder="Введите пароль"
-                  className="w-full bg-bg-surface2 border border-ink-line text-ink rounded-lg pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-ink-mute"
+                  className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   required
                 />
                 <button

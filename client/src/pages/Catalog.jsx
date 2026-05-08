@@ -6,6 +6,8 @@ import BottomNav from '../components/layout/BottomNav'
 import { ProductCardV } from '../components/ui/ProductCard'
 import { Chip, Skeleton } from '../components/ui'
 import { productsAPI, categoriesAPI } from '../services/api'
+import { useLangStore } from '../store/langStore'
+import { t } from '../utils/i18n'
 import { haptic } from '../utils/format'
 
 const EMOJI_MAP = {
@@ -15,21 +17,24 @@ const EMOJI_MAP = {
 function adaptProduct(p) {
   const name = typeof p.name === 'string' ? p.name : (p.name?.uz || p.name?.ru || p.name?.en || 'Mahsulot')
   const meta = p.stock ? `${p.stock} ta qoldi` : ''
-  const badge = p.discountPrice && p.price > p.discountPrice
-    ? { tone: 'red', label: `−${Math.round((1 - p.discountPrice / p.price) * 100)}%` }
+  const finalPrice = p.finalPrice ?? p.price
+  const hasDiscount = finalPrice < p.price
+  const badge = hasDiscount
+    ? { tone: 'red', label: `−${Math.round((1 - finalPrice / p.price) * 100)}%` }
     : (p.isFeatured ? { tone: 'green', label: 'HIT' } : null)
   return {
     id: p._id || p.id,
     name,
     meta,
     emoji: EMOJI_MAP[p.category?.slug || p.cat] || '🥩',
-    price: p.discountPrice || p.price,
-    old: p.discountPrice ? p.price : null,
-    cat: p.category?.slug || p.cat,
+    price: finalPrice,
+    old: hasDiscount ? p.price : null,
+    cat: p.category?._id || p.category?.slug || p.cat,
     badge,
     rating: p.rating || 4.5,
     reviews: p.reviews || 12,
     desc: typeof p.description === 'string' ? p.description : (p.description?.uz || p.description?.ru || p.description?.en || ''),
+    images: p.images || [],
   }
 }
 
@@ -44,6 +49,7 @@ function adaptCategory(c) {
 
 export default function Catalog() {
   const navigate = useNavigate()
+  const { lang } = useLangStore()
   const [cat, setCat] = useState('all')
   const [sort, setSort] = useState('popular')
   const [products, setProducts] = useState([])
@@ -57,7 +63,7 @@ export default function Catalog() {
       productsAPI.getAll({ limit: 200 }).then(r => r.data),
     ]).then(([catsRes, prodsRes]) => {
       if (!mounted) return
-      setCategories((catsRes.categories || []).map(adaptCategory))
+      setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).map(adaptCategory))
       setProducts((prodsRes.products || []).map(adaptProduct))
       setLoading(false)
     }).catch(() => setLoading(false))
@@ -73,11 +79,11 @@ export default function Catalog() {
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-bg pb-20">
-      <TopBar variant="catalog" title="Katalog" />
+      <TopBar variant="catalog" title={t(lang, 'catalog.title')} />
 
       {/* Cat chips */}
       <div className="px-4 pt-3 flex gap-2 overflow-x-auto no-scrollbar pb-2">
-        <Chip active={cat === 'all'} onClick={() => { haptic('light'); setCat('all') }}>Barchasi</Chip>
+        <Chip active={cat === 'all'} onClick={() => { haptic('light'); setCat('all') }}>{t(lang, 'catalog.all')}</Chip>
         {loading ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 w-24 rounded-full shrink-0" />) :
           categories.map(c => (
             <Chip key={c.id} active={cat === c.id} onClick={() => { haptic('light'); setCat(c.id) }}>{c.emoji} {c.label}</Chip>
@@ -86,15 +92,15 @@ export default function Catalog() {
 
       {/* Sort + count */}
       <div className="px-4 pt-1 pb-2 flex items-center justify-between">
-        <div className="text-xs text-ink-dim font-medium">{sorted.length} mahsulot</div>
+        <div className="text-xs text-ink-dim font-medium">{sorted.length} {t(lang, 'catalog.count')}</div>
         <select
           value={sort}
           onChange={e => setSort(e.target.value)}
           className="bg-bg-surface border border-ink-line rounded-md px-2 h-8 text-xs text-ink font-medium"
         >
-          <option value="popular">Mashhur</option>
-          <option value="price_asc">Narx: arzon → qimmat</option>
-          <option value="price_desc">Narx: qimmat → arzon</option>
+          <option value="popular">{t(lang, 'catalog.popular')}</option>
+          <option value="price_asc">{t(lang, 'catalog.sortPriceAsc')}</option>
+          <option value="price_desc">{t(lang, 'catalog.sortPriceDesc')}</option>
         </select>
       </div>
 
@@ -117,7 +123,7 @@ export default function Catalog() {
       {!loading && sorted.length === 0 && (
         <div className="flex-1 flex flex-col items-center justify-center text-ink-dim text-sm py-12">
           <div className="text-4xl mb-2">🔍</div>
-          <div>Hech narsa topilmadi</div>
+          <div>{t(lang, 'catalog.empty')}</div>
         </div>
       )}
 

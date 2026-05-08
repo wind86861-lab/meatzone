@@ -31,7 +31,7 @@ export const useAuthStore = create(
           })
           if (res.ok) {
             const user = await res.json()
-            if (user.role === 'admin') {
+            if (user.role === 'admin' || user.role === 'driver' || user.role === 'operator') {
               set({ user, isAuthenticated: true, isLoading: false })
             } else {
               set({ user: null, token: null, isAuthenticated: false, isLoading: false })
@@ -42,6 +42,32 @@ export const useAuthStore = create(
         } catch {
           set({ user: null, token: null, isAuthenticated: false, isLoading: false })
         }
+      },
+
+      telegramAutoLogin: async () => {
+        // Only run inside Telegram Mini App
+        const tg = window.Telegram?.WebApp
+        if (!tg || !tg.initData) return false
+
+        // Skip if already authenticated
+        const { token } = get()
+        if (token) return true
+
+        try {
+          const res = await fetch('/api/auth/telegram/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData: tg.initData }),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            set({ user: data.user, token: data.token, isAuthenticated: true, isLoading: false })
+            return true
+          }
+        } catch (err) {
+          console.error('Telegram auto-login failed:', err)
+        }
+        return false
       },
     }),
     {

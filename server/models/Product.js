@@ -15,10 +15,10 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  // Premium pricing for Stage 1
-  premiumPrice: {
-    type: Number,
-    default: null, // null means use regular price
+  unit: {
+    type: String,
+    enum: ['kg', 'pcs'],
+    default: 'pcs',
   },
   discountValue: {
     type: Number,
@@ -94,20 +94,9 @@ productSchema.virtual('reviewCount').get(function () {
   return 0;
 });
 
-// Stage 1: Get price based on user type
-productSchema.methods.getPriceByUserType = function (userType = 'regular') {
-  if (userType === 'premium' && this.premiumPrice !== null && this.premiumPrice >= 0) {
-    return this.premiumPrice;
-  }
-  return this.finalPrice;
-};
-
-// Stage 1: Virtual for premium final price
-productSchema.virtual('premiumFinalPrice').get(function () {
-  if (this.premiumPrice !== null && this.premiumPrice >= 0) {
-    return this.premiumPrice;
-  }
-  return this.finalPrice;
+// Get unit label for display
+productSchema.virtual('unitLabel').get(function () {
+  return this.unit === 'kg' ? 'kg' : 'dona';
 });
 
 module.exports = mongoose.model('Product', productSchema);

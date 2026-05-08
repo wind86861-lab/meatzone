@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'technician', 'customer'],
+    enum: ['admin', 'manager', 'technician', 'customer', 'driver', 'operator'],
     default: 'customer',
   },
   phone: String,
@@ -34,30 +34,10 @@ const userSchema = new mongoose.Schema({
     index: true,
   },
   telegramUsername: String,
-  // Premium user fields
-  isPremium: {
-    type: Boolean,
-    default: false,
-  },
-  premiumExpiresAt: {
-    type: Date,
-    default: null,
-  },
-  // User type for pricing
-  userType: {
-    type: String,
-    enum: ['regular', 'premium'],
-    default: 'regular',
-  },
 }, {
   timestamps: true,
 });
 
-// Virtual to check if premium is active
-userSchema.virtual('isPremiumActive').get(function () {
-  if (!this.isPremium || !this.premiumExpiresAt) return false;
-  return new Date() < this.premiumExpiresAt;
-});
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {

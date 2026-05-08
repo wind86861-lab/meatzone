@@ -1,6 +1,7 @@
 import React from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../utils/format'
+import { useToastStore } from '../../store/toastStore'
 
 /* ──────────────────────────── Button ──────────────────────────── */
 export function Button({ as: Tag = 'button', variant = 'primary', size = 'md', className, children, ...rest }) {
@@ -121,6 +122,40 @@ export function EmptyState({ icon = '🔍', title, sub, action }) {
       <div className="font-display text-2xl tracking-wide text-ink mb-1">{title}</div>
       {sub && <div className="text-sm text-ink-dim mb-5">{sub}</div>}
       {action}
+    </div>
+  )
+}
+
+/* ──────────────────────────── Toast ──────────────────────────── */
+export function ToastContainer() {
+  const toasts = useToastStore(s => s.toasts)
+  return (
+    <div className="fixed bottom-[80px] inset-x-0 z-[200] flex flex-col items-center gap-2 pointer-events-none px-4">
+      <AnimatePresence>
+        {toasts.map(t => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 40, scale: 0.88 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.88 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+            className="flex items-center gap-3 bg-white border-2 border-green-500 rounded-2xl px-4 py-3 shadow-xl w-full max-w-[360px]"
+          >
+            <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0 text-xl">
+              {t.emoji}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-bold text-gray-900 truncate">{t.message}</div>
+              <div className="text-[11px] text-green-600 font-semibold mt-0.5">✓ Savatga qo'shildi</div>
+            </div>
+            <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M2.5 6.5l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   )
 }

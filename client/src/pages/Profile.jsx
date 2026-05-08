@@ -1,18 +1,19 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, MapPin, Phone, HelpCircle, FileText, Star, ChevronRight } from 'lucide-react'
-
-const MENU = [
-  { icon: MapPin,       label: 'Manzillarim',     desc: 'Saqlangan yetkazish manzillari' },
-  { icon: Phone,        label: 'Telefon raqam',   desc: '+998 90 123 45 67' },
-  { icon: Star,         label: 'Baholarim',       desc: '12 ta baho qoldirildi' },
-  { icon: FileText,     label: 'Buyurtma tarixi', desc: 'Oxirgi 30 kun' },
-  { icon: HelpCircle,   label: 'Yordam',          desc: 'Operator bilan bog\'lanish' },
-]
+import { ArrowLeft, MapPin, Phone, HelpCircle, ChevronRight } from 'lucide-react'
+import { useLangStore } from '../store/langStore'
+import { t } from '../utils/i18n'
 
 export default function Profile() {
   const navigate = useNavigate()
+  const { lang, setLang } = useLangStore()
+
+  const MENU = [
+    { icon: MapPin, label: 'Saved delivery addresses', desc: 'Change to name fetched from Telegram account' },
+    { icon: Phone, label: 'Phone', desc: 'Get from Telegram when opened through Telegram' },
+    { icon: HelpCircle, label: 'Contact operator', desc: 'Company contact information' },
+  ]
 
   return (
     <motion.div
@@ -23,7 +24,7 @@ export default function Profile() {
         <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-black/30 border border-white/10 flex items-center justify-center text-white tap">
           <ArrowLeft size={18} />
         </button>
-        <div className="font-display text-2xl tracking-wide text-white">Profil</div>
+        <div className="font-display text-2xl tracking-wide text-white">{t(lang, 'profile.title')}</div>
       </div>
 
       {/* User card */}
@@ -33,8 +34,8 @@ export default function Profile() {
             🥩
           </div>
           <div>
-            <div className="font-display text-xl text-ink tracking-wide">MEATZONE Mijoz</div>
-            <div className="text-xs text-ink-dim">Toshkent, Uzbekiston</div>
+            <div className="font-display text-xl text-ink tracking-wide">MEATZONE</div>
+            <div className="text-xs text-ink-dim">{lang === 'ru' ? 'Ташкент, Узбекистан' : lang === 'en' ? 'Tashkent, Uzbekistan' : "Toshkent, O'zbekiston"}</div>
           </div>
         </div>
       </div>
@@ -64,10 +65,20 @@ export default function Profile() {
       {/* Language */}
       <div className="px-4 pt-4">
         <div className="bg-bg-surface rounded-lg border border-ink-line p-3 flex items-center justify-between">
-          <span className="text-sm font-bold text-ink">Til</span>
+          <span className="text-sm font-bold text-ink">{t(lang, 'profile.language')}</span>
           <div className="flex gap-2">
-            <span className="px-2 py-1 rounded bg-primary text-white text-xs font-bold">UZ</span>
-            <span className="px-2 py-1 rounded bg-bg-surface3 text-ink-dim text-xs font-medium">RU</span>
+            <button onClick={() => setLang('uz')}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'uz' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              UZ
+            </button>
+            <button onClick={() => setLang('ru')}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'ru' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              RU
+            </button>
+            <button onClick={() => setLang('en')}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'en' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              EN
+            </button>
           </div>
         </div>
       </div>

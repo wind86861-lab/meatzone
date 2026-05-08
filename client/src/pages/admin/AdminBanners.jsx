@@ -1,0 +1,257 @@
+import { useEffect, useState } from 'react'
+import { bannersAPI, uploadAPI } from '../../services/api'
+import { Plus, Trash2, Save, Check, Upload, Eye, EyeOff, GripVertical } from 'lucide-react'
+
+const VARIANTS = [
+  { value: 'red', label: 'Qizil', className: 'bg-red-600' },
+  { value: 'dark', label: 'Qora', className: 'bg-gray-900' },
+  { value: 'amber', label: 'Amber', className: 'bg-amber-600' },
+  { value: 'green', label: 'Yashil', className: 'bg-green-600' },
+  { value: 'blue', label: 'Ko\'k', className: 'bg-blue-600' },
+  { value: 'purple', label: 'Siyoh', className: 'bg-purple-600' },
+]
+
+export default function AdminBanners() {
+  const [banners, setBanners] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [uploadingId, setUploadingId] = useState(null)
+
+  useEffect(() => { fetchBanners() }, [])
+
+  const fetchBanners = async () => {
+    try {
+      setLoading(true)
+      const res = await bannersAPI.getAdmin()
+      setBanners(res.data || [])
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
+  }
+
+  const updateBanner = (id, field, value) => {
+    setBanners(prev => prev.map(b => b._id === id ? { ...b, [field]: value } : b))
+  }
+
+  const addBanner = () => {
+    const newBanner = {
+      _id: 'new_' + Date.now(),
+      title: 'Yangi taklif',
+      subtitle: 'Batafsil',
+      tag: 'Aksiya',
+      emoji: '🥩',
+      variant: 'red',
+      image: '',
+      link: '/catalog',
+      active: true,
+      order: banners.length,
+      isNew: true,
+    }
+    setBanners(prev => [...prev, newBanner])
+  }
+
+  const removeBanner = async (id) => {
+    const b = banners.find(x => x._id === id)
+    if (!b) return
+    if (!b.isNew) {
+      if (!confirm('Banner o\'chirilsinmi?')) return
+      try {
+        await bannersAPI.delete(id)
+      } catch (err) { alert('O\'chirishda xatolik'); return }
+    }
+    setBanners(prev => prev.filter(x => x._id !== id))
+  }
+
+  const handleImageUpload = async (e, id) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return }
+    setUploadingId(id)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const res = await uploadAPI.single(fd)
+      updateBanner(id, 'image', res.data.url)
+    } catch { alert('Yuklashda xatolik') }
+    finally { setUploadingId(null) }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      for (const b of banners) {
+        const payload = {
+          title: b.title || '',
+          subtitle: b.subtitle || '',
+          tag: b.tag || '',
+          emoji: b.emoji || '',
+          variant: b.variant || 'red',
+          image: b.image || '',
+          link: b.link || '/catalog',
+          active: !!b.active,
+          order: b.order ?? 0,
+        }
+        if (b.isNew) {
+          const res = await bannersAPI.create(payload)
+          b._id = res.data._id
+          b.isNew = false
+        } else {
+          await bannersAPI.update(b._id, payload)
+        }
+      }
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      await fetchBanners()
+    } catch (err) {
+      alert('Saqlashda xatolik')
+      console.error(err)
+    } finally { setSaving(false) }
+  }
+
+  const moveBanner = (index, direction) => {
+    if (direction === -1 && index === 0) return
+    if (direction === 1 && index === banners.length - 1) return
+    setBanners(prev => {
+      const next = [...prev]
+      const [moved] = next.splice(index, 1)
+      next.splice(index + direction, 0, moved)
+      return next.map((b, i) => ({ ...b, order: i }))
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Bannerlar</h1>
+          <p className="text-gray-600 text-sm">Bosh sahifadagi slayder bannerlarni boshqarish</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={addBanner} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium">
+            <Plus size={18} /> Yangi banner
+          </button>
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50">
+            {saved ? <><Check size={18} /> Saqlandi!</> : saving ? 'Saqlanmoqda...' : <><Save size={18} /> Saqlash</>}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {banners.map((b, i) => (
+          <div key={b._id} className={`bg-white rounded-xl shadow-sm border overflow-hidden ${b.active ? 'border-gray-100' : 'border-gray-200 opacity-70'}`}>
+            <div className="flex items-center gap-2 p-3 border-b border-gray-100 bg-gray-50">
+              <button onClick={() => moveBanner(i, -1)} disabled={i === 0} className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"><GripVertical size={16} className="-mr-3" /></button>
+              <button onClick={() => moveBanner(i, 1)} disabled={i === banners.length - 1} className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"><GripVertical size={16} className="-ml-3" /></button>
+              <span className="text-xs font-bold text-gray-400 w-6">{i + 1}</span>
+              <button onClick={() => updateBanner(b._id, 'active', !b.active)} className="ml-auto p-1.5 rounded-lg hover:bg-gray-200">
+                {b.active ? <Eye size={16} className="text-green-600" /> : <EyeOff size={16} className="text-gray-400" />}
+              </button>
+              <button onClick={() => removeBanner(b._id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500">
+                <Trash2 size={16} />
+              </button>
+            </div>
+
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Sarlavha</label>
+                  <input type="text" value={b.title || ''} onChange={e => updateBanner(b._id, 'title', e.target.value)}
+                    className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Tavsif</label>
+                  <input type="text" value={b.subtitle || ''} onChange={e => updateBanner(b._id, 'subtitle', e.target.value)}
+                    className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Teg (tag)</label>
+                    <input type="text" value={b.tag || ''} onChange={e => updateBanner(b._id, 'tag', e.target.value)}
+                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Emoji</label>
+                    <input type="text" value={b.emoji || ''} onChange={e => updateBanner(b._id, 'emoji', e.target.value)}
+                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Rang (variant)</label>
+                    <select value={b.variant || 'red'} onChange={e => updateBanner(b._id, 'variant', e.target.value)}
+                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {VARIANTS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Havola (link)</label>
+                    <input type="text" value={b.link || ''} onChange={e => updateBanner(b._id, 'link', e.target.value)}
+                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Rasm</label>
+                  <div className="flex items-center gap-3">
+                    {b.image && (
+                      <img src={b.image} alt="" className="h-12 w-12 object-cover rounded-lg border border-gray-200" />
+                    )}
+                    <label className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 text-sm w-fit">
+                      {uploadingId === b._id ? (
+                        <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                      ) : (
+                        <Upload size={16} />
+                      )}
+                      <span>{b.image ? 'Almashtirish' : 'Yuklash'}</span>
+                      <input type="file" accept="image/*" className="hidden" disabled={uploadingId === b._id}
+                        onChange={e => handleImageUpload(e, b._id)} />
+                    </label>
+                    {b.image && (
+                      <button onClick={() => updateBanner(b._id, 'image', '')} className="text-xs text-red-500 hover:underline">Olib tashlash</button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Preview */}
+                <div className="mt-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Oldindan ko\'rish</label>
+                  <div className={`inline-flex items-center gap-3 px-4 py-3 rounded-xl text-white ${VARIANTS.find(v => v.value === (b.variant || 'red'))?.className || 'bg-red-600'}`}>
+                    <span className="text-2xl">{b.emoji || '🥩'}</span>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide opacity-80">{b.tag || 'TAG'}</div>
+                      <div className="text-sm font-bold leading-tight">{b.title || 'Title'}</div>
+                      <div className="text-xs opacity-90">{b.subtitle || 'Subtitle'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {banners.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
+            <p className="text-gray-500">Bannerlar yo\'q</p>
+            <button onClick={addBanner} className="mt-3 text-blue-600 text-sm hover:underline">Yangi banner qo\'shish</button>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end pb-8">
+        <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50">
+          {saved ? <><Check size={18} /> Saqlandi!</> : saving ? 'Saqlanmoqda...' : <><Save size={18} /> Saqlash</>}
+        </button>
+      </div>
+    </div>
+  )
+}

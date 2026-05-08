@@ -5,7 +5,11 @@ const Order = require('../models/Order');
 const OrderItem = require('../models/OrderItem');
 const Product = require('../models/Product');
 const User = require('../models/User');
-const { protect, admin } = require('../middleware/auth');
+const TelegramUser = require('../models/TelegramUser');
+const { protect, admin, driver, adminOrDriver, operator } = require('../middleware/auth');
+const { getDeliverySettings, haversine, getRoadDistance } = require('./delivery');
+const Coin = require('../models/Coin');
+const Promo = require('../models/Promo');
 const { botState } = require('../config/redis');
 const { sendTelegramMessage, formatOrderMessage } = require('../utils/telegram');
 const { getPaymeLink, getClickLink } = require('../utils/paymentLinks');
@@ -30,20 +34,17 @@ const submitLimiter = rateLimit({
  */
 router.post('/create', submitLimiter, async (req, res) => {
   try {
-    const { items, customerPhone, customerName, userId, telegramId, address, district, comment } = req.body;
+    const {
+      items, customerPhone, customerName, userId, telegramId,
+      address, district, comment,
+      latitude, longitude,
+      useCoins, promoCode, paymentMethod,
+    } = req.body;
 
     if (!items || !items.length) {
       return res.status(400).json({ message: 'Items are required', code: 'NO_ITEMS' });
     }
-    if (!customerName || !customerName.trim()) {
-      return res.status(400).json({ message: 'Customer name is required', code: 'NO_NAME' });
-    }
-    if (!address || !address.trim()) {
-      return res.status(400).json({ message: 'Address is required', code: 'NO_ADDRESS' });
-    }
-    if (!district || !district.trim()) {
-      return res.status(400).json({ message: 'District is required', code: 'NO_DISTRICT' });
-    }
+    // Name, address, district are optional — will be filled via Telegram bot
 
     // Validate all productIds are valid ObjectIds before any DB query
     const mongoose = require('mongoose');
@@ -59,18 +60,8 @@ router.post('/create', submitLimiter, async (req, res) => {
       }
     }
 
-    // Check if user is premium
-    let isPremiumUser = false;
-    if (userId) {
-      const user = await User.findById(userId);
-      if (user && user.isPremium && user.premiumExpiresAt > new Date()) {
-        isPremiumUser = true;
-      }
-    }
-
     // Calculate total with appropriate prices
-    let totalPrice = 0;
-    let originalTotalPrice = 0;
+    let subTotal = 0;
     const orderItems = [];
 
     for (const item of items) {
@@ -79,24 +70,73 @@ router.post('/create', submitLimiter, async (req, res) => {
         return res.status(404).json({ message: `Product ${item.productId} not found` });
       }
 
-      const originalPrice = product.price;
-      const finalPrice = product.getPriceByUserType(isPremiumUser ? 'premium' : 'regular');
+      const price = product.finalPrice || product.price;
 
       orderItems.push({
         productId: product._id,
         name: product.name.ru || product.name.uz,
-        price: finalPrice,
-        originalPrice: originalPrice,
+        price: price,
+        originalPrice: product.price,
         quantity: item.quantity,
         image: product.images[0] || '',
-        isPremiumPrice: isPremiumUser && finalPrice < originalPrice,
       });
 
-      totalPrice += finalPrice * item.quantity;
-      originalTotalPrice += originalPrice * item.quantity;
+      subTotal += price * item.quantity;
     }
 
-    // Create order
+    // ── Delivery fee from settings ───────────────────────────────────────────
+    const cfg = await getDeliverySettings();
+    let deliveryFee = 0;
+    let isFreeDelivery = false;
+    let deliveryDistance = null;
+
+    if (!cfg.enabled) {
+      isFreeDelivery = true;
+    } else if (cfg.freeUntil && new Date() <= cfg.freeUntil) {
+      isFreeDelivery = true;
+    } else if (subTotal >= cfg.freeThreshold) {
+      isFreeDelivery = true;
+    } else if (latitude && longitude) {
+      const { distance } = await getRoadDistance(cfg.storeLat, cfg.storeLng, Number(latitude), Number(longitude));
+      deliveryDistance = distance;
+      deliveryFee = Math.max(cfg.minFee, Math.round(deliveryDistance * cfg.pricePerKm / 500) * 500);
+    } else {
+      deliveryFee = cfg.minFee;
+    }
+
+    // ── Promo code discount ──────────────────────────────────────────────────
+    let promoDiscount = 0;
+    let appliedPromo = null;
+    if (promoCode) {
+      const promo = await Promo.findOne({ code: promoCode.toUpperCase().trim(), isActive: true });
+      if (promo && (!promo.validUntil || new Date() <= promo.validUntil) &&
+        (promo.maxUses === null || promo.usedCount < promo.maxUses)) {
+        promoDiscount = promo.discountType === 'percent'
+          ? Math.round((subTotal * promo.discountValue) / 100)
+          : promo.discountValue;
+        appliedPromo = promo;
+      }
+    }
+
+    // ── Coin discount ────────────────────────────────────────────────────────
+    let coinDiscount = 0;
+    if (useCoins && userId) {
+      const coinDocs = await Coin.aggregate([
+        { $match: { user: require('mongoose').Types.ObjectId.createFromHexString(userId) } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]);
+      const coinBalance = coinDocs[0]?.total || 0;
+      const Settings = require('../models/Settings');
+      const maxPctDoc = await Settings.findOne({ key: 'coin_max_percent' });
+      const maxPct = Number(maxPctDoc?.value) || 30;
+      const maxCoinDiscount = Math.round((subTotal * maxPct) / 100);
+      coinDiscount = Math.min(coinBalance, maxCoinDiscount);
+    }
+
+    const totalDiscount = promoDiscount + coinDiscount;
+    const totalPrice = Math.max(0, subTotal - totalDiscount) + deliveryFee;
+
+    // ── Create order ─────────────────────────────────────────────────────────
     const order = await Order.create({
       customerPhone: customerPhone || '',
       customerName: customerName || '',
@@ -105,12 +145,31 @@ router.post('/create', submitLimiter, async (req, res) => {
       comment: comment || '',
       user: userId || null,
       telegramId: telegramId || null,
+      latitude: latitude || null,
+      longitude: longitude || null,
+      subTotal,
+      deliveryFee,
+      isFreeDelivery,
       totalPrice,
-      originalTotalPrice,
-      isPremiumOrder: isPremiumUser,
-      status: 'new',
+      paymentMethod: paymentMethod || 'cash',
+      promoCode: appliedPromo ? appliedPromo.code : '',
+      promoDiscount,
+      coinDiscount,
+      status: 'processing',
       paymentStatus: 'pending',
     });
+
+    // Record promo usage
+    if (appliedPromo) {
+      appliedPromo.usedCount += 1;
+      if (userId) appliedPromo.usedBy.push({ user: userId, order: order._id });
+      await appliedPromo.save();
+    }
+
+    // Deduct coins
+    if (coinDiscount > 0 && userId) {
+      await Coin.create({ user: userId, amount: -coinDiscount, type: 'spent', order: order._id, description: 'Zakaz uchun sarflandi' });
+    }
 
     // Create order items
     await OrderItem.insertMany(
@@ -119,6 +178,16 @@ router.post('/create', submitLimiter, async (req, res) => {
 
     // Store token in Redis for quick bot lookup
     await botState.setToken(order.deepLinkToken, order._id.toString(), 86400);
+
+    // ── Broadcast to all Telegram drivers immediately ──
+    const OrderItemModel = require('../models/OrderItem');
+    const savedItems = await OrderItemModel.find({ order: order._id }).lean();
+    const { notifyDriversOfNewOrder } = require('../services/notifications');
+    const sent = await notifyDriversOfNewOrder(order, savedItems);
+    if (sent.length) {
+      const { redis } = require('../config/redis');
+      await redis.setex(`order:${order._id}:driver_notif`, 3600, JSON.stringify(sent));
+    }
 
     // Return order with deep link
     const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'your_bot';
@@ -314,6 +383,18 @@ router.post('/:id/confirm', protect, admin, async (req, res) => {
       sendTelegramMessage(message, order.telegramId).catch(console.error);
     }
 
+    // ── Broadcast to all Telegram drivers when confirmed ──
+    if (!order.assignedDriver && !order.driverTelegramId) {
+      const { notifyDriversOfNewOrder } = require('../services/notifications');
+      const OrderItem = require('../models/OrderItem');
+      const items = await OrderItem.find({ order: order._id }).lean();
+      const sent = await notifyDriversOfNewOrder(order, items);
+      if (sent.length) {
+        const { redis } = require('../config/redis');
+        await redis.setex(`order:${order._id}:driver_notif`, 3600, JSON.stringify(sent));
+      }
+    }
+
     res.json({
       message: 'Order confirmed',
       order: {
@@ -330,38 +411,103 @@ router.post('/:id/confirm', protect, admin, async (req, res) => {
 });
 
 // =====================================================
-// PUBLIC: get orders by customer phone (no auth)
+// PUBLIC: after-sales info by serviceToken (no auth)
 // =====================================================
-router.get('/by-phone/:phone', async (req, res) => {
+router.get('/service/:token', async (req, res) => {
   try {
-    const phone = req.params.phone.replace(/\s/g, '');
-    const orders = await Order.find({ customerPhone: { $regex: phone, $options: 'i' } })
-      .sort({ createdAt: -1 })
-      .limit(50);
-    res.json({ orders, total: orders.length, page: 1, pages: 1 });
+    const order = await Order.findOne({ serviceToken: req.params.token });
+    if (!order) return res.status(404).json({ message: 'Not found' });
+
+    const orderItems = await OrderItem.find({ order: order._id }).lean();
+
+    res.json({
+      order: {
+        _id: order._id,
+        shortId: order._id.toString().slice(-6).toUpperCase(),
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        address: order.address,
+        district: order.district,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        subTotal: order.subTotal,
+        deliveryFee: order.deliveryFee,
+        isFreeDelivery: order.isFreeDelivery,
+        totalPrice: order.totalPrice,
+        promoDiscount: order.promoDiscount,
+        coinDiscount: order.coinDiscount,
+        comment: order.comment,
+        deliveryTime: order.deliveryTime,
+        createdAt: order.createdAt,
+      },
+      items: orderItems,
+    });
   } catch (error) {
-    console.error('Get orders by phone error:', error);
     res.status(500).json({ message: error.message });
   }
 });
 
 // =====================================================
-// EXISTING ENDPOINTS (Updated for Stage 1)
+// PUBLIC: get orders by customer phone (no auth)
 // =====================================================
+router.get('/by-phone/:phone', async (req, res) => {
+  try {
+    const phone = req.params.phone.replace(/\s/g, '');
+    // Escape regex special chars to avoid MongoDB regex errors (e.g. '+' in phone)
+    const escaped = phone.replace(/[+.*?^${}()|[\]\\]/g, '\\$&');
+    const orders = await Order.find({ customerPhone: { $regex: escaped, $options: 'i' } })
+      .sort({ createdAt: -1 })
+      .limit(50);
 
-// Admin: get all orders (with advanced filters)
+    // Attach order items
+    const result = await Promise.all(orders.map(async (o) => {
+      const items = await OrderItem.find({ order: o._id }).lean();
+      return { ...o.toObject(), items };
+    }));
+
+    res.json({ orders: result, total: result.length, page: 1, pages: 1 });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * GET /api/orders/my-orders
+ * Returns orders for the authenticated Telegram user (identified via JWT from Mini App login).
+ */
+router.get('/my-orders', protect, async (req, res) => {
+  try {
+    const telegramId = req.user?.telegramId;
+    if (!telegramId) return res.json({ orders: [], total: 0 });
+
+    const orders = await Order.find({ telegramId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    const result = await Promise.all(orders.map(async (o) => {
+      const items = await OrderItem.find({ order: o._id }).lean();
+      return { ...o.toObject(), items };
+    }));
+
+    res.json({ orders: result, total: result.length });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// =====================================================
+// EXISTING ENDPOINTS (Updated for Stage 1)
 router.get('/', protect, admin, async (req, res) => {
   try {
-    const { status, paymentStatus, paymentMethod, district, search, dateFrom, dateTo, page = 1, limit = 20 } = req.query;
+    const { status, paymentStatus, page = 1, limit = 20, search, dateFrom, dateTo } = req.query;
     const query = {};
     if (status) query.status = status;
     if (paymentStatus) query.paymentStatus = paymentStatus;
-    if (paymentMethod) query.paymentMethod = paymentMethod;
-    if (district) query.district = { $regex: district, $options: 'i' };
     if (search) {
       query.$or = [
-        { customerName: { $regex: search, $options: 'i' } },
         { customerPhone: { $regex: search, $options: 'i' } },
+        { customerName: { $regex: search, $options: 'i' } },
         { _id: search.match(/^[0-9a-fA-F]{24}$/) ? search : undefined },
       ].filter(q => Object.values(q)[0] !== undefined);
     }
@@ -376,12 +522,30 @@ router.get('/', protect, admin, async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
-      .populate('user', 'name phone isPremium')
-      .populate('confirmedBy', 'name');
+      .populate('user', 'name phone')
+      .populate('confirmedBy', 'name')
+      .populate('assignedDriver', 'name phone');
 
     res.json({ orders, total, page: parseInt(page), pages: Math.ceil(total / limit) });
   } catch (error) {
     console.error('Get orders error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Admin — quick order stats for badge/notifications
+router.get('/stats', protect, admin, async (req, res) => {
+  try {
+    const counts = await Order.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+    const result = { new: 0, processing: 0, confirmed: 0, completed: 0, cancelled: 0, total: 0 };
+    counts.forEach(c => {
+      if (result[c._id] !== undefined) result[c._id] = c.count;
+      result.total += c.count;
+    });
+    res.json(result);
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
@@ -401,6 +565,35 @@ router.get('/:id', protect, async (req, res) => {
     res.json({ order, items: orderItems, paymentHistory });
   } catch (error) {
     console.error('Get order error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ADMIN: generate QR code image for an order
+router.get('/:id/qr', protect, admin, async (req, res) => {
+  try {
+    const QRCode = require('qrcode');
+    const order = await Order.findById(req.params.id).select('serviceToken _id');
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Ensure serviceToken exists (backfill for old orders)
+    if (!order.serviceToken) {
+      const crypto = require('crypto');
+      order.serviceToken = crypto.randomBytes(12).toString('hex');
+      await order.save();
+    }
+
+    const siteUrl = process.env.SITE_URL || 'http://localhost:5173';
+    const url = `${siteUrl}/service/${order.serviceToken}`;
+
+    const dataUrl = await QRCode.toDataURL(url, {
+      width: 400,
+      margin: 2,
+      color: { dark: '#1a1a1a', light: '#ffffff' },
+    });
+
+    res.json({ qr: dataUrl, url, serviceToken: order.serviceToken });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
@@ -493,6 +686,488 @@ router.delete('/:id', protect, admin, async (req, res) => {
     res.json({ message: 'Order deleted' });
   } catch (error) {
     console.error('Delete order error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// =========================
+// DRIVER ENDPOINTS
+// =========================
+
+/**
+ * GET /api/orders/driver/my-orders
+ * Get orders assigned to the logged-in driver
+ */
+router.get('/driver/my-orders', protect, driver, async (req, res) => {
+  try {
+    const orders = await Order.find({
+      $or: [
+        { assignedDriver: req.user._id },
+        { driverTelegramId: req.user.telegramId },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .populate('assignedDriver', 'name phone');
+
+    const enriched = await Promise.all(
+      orders.map(async (order) => {
+        const items = await OrderItem.find({ order: order._id }).lean();
+        return { ...order.toObject(), items };
+      })
+    );
+
+    res.json(enriched);
+  } catch (error) {
+    console.error('Driver orders error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * GET /api/orders/driver/available
+ * Get unassigned pending orders for drivers to claim
+ */
+router.get('/driver/available', protect, driver, async (req, res) => {
+  try {
+    const filter = {
+      status: { $in: ['confirmed', 'processing'] },
+      deliveryStatus: { $in: ['pending', null] },
+    };
+
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    const enriched = await Promise.all(
+      orders.map(async (order) => {
+        const items = await OrderItem.find({ order: order._id }).lean();
+        return { ...order.toObject(), items };
+      })
+    );
+
+    res.json(enriched);
+  } catch (error) {
+    console.error('Driver available orders error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/orders/:id/assign-driver
+ * Assign an order to a driver (admin or the driver themselves)
+ */
+router.post('/:id/assign-driver', protect, adminOrDriver, async (req, res) => {
+  try {
+    const { driverId } = req.body;
+    const targetDriverId = driverId || req.user._id;
+
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Drivers can only assign to themselves, admin can assign to any driver
+    if (req.user.role === 'driver' && targetDriverId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only assign to yourself' });
+    }
+
+    order.assignedDriver = targetDriverId;
+    order.deliveryStatus = 'assigned';
+    await order.save();
+
+    const updated = await Order.findById(order._id)
+      .populate('assignedDriver', 'name phone');
+
+    res.json({ message: 'Driver assigned', order: updated });
+  } catch (error) {
+    console.error('Assign driver error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/orders/:id/delivery-status
+ * Update delivery status (driver only)
+ */
+router.post('/:id/delivery-status', protect, driver, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['in_transit', 'delivered', 'failed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid delivery status' });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const isAssigned =
+      (order.assignedDriver && order.assignedDriver.toString() === req.user._id.toString()) ||
+      (order.driverTelegramId && order.driverTelegramId === req.user.telegramId);
+    if (!isAssigned) {
+      return res.status(403).json({ message: 'Not your assigned order' });
+    }
+
+    order.deliveryStatus = status;
+    if (status === 'delivered') {
+      order.status = 'completed';
+
+      // Award coins to customer
+      if (order.user) {
+        try {
+          const Settings = require('../models/Settings');
+          const rateDoc = await Settings.findOne({ key: 'coin_rate' });
+          const coinRate = Number(rateDoc?.value) || 1; // coins per 1000 sum
+          const earned = Math.floor((order.subTotal / 1000) * coinRate);
+          if (earned > 0) {
+            await Coin.create({ user: order.user, amount: earned, type: 'earned', order: order._id, description: 'Zakaz uchun bonus' });
+          }
+        } catch (e) { /* non-fatal */ }
+      }
+    }
+    await order.save();
+
+    res.json({ message: 'Delivery status updated', order });
+  } catch (error) {
+    console.error('Delivery status error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/orders/:id/driver/confirm-cash
+ * Driver confirms they received cash from the customer
+ */
+router.post('/:id/driver/confirm-cash', protect, driver, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const isAssigned =
+      (order.assignedDriver && order.assignedDriver.toString() === req.user._id.toString()) ||
+      (order.driverTelegramId && order.driverTelegramId === req.user.telegramId);
+    if (!isAssigned) return res.status(403).json({ message: 'Not your order' });
+
+    if (order.paymentMethod !== 'cash') {
+      return res.status(400).json({ message: 'Not a cash order' });
+    }
+    const isDelivered =
+      order.deliveryStatus === 'delivered' ||
+      order.status === 'completed' ||
+      order.status === 'delivered';
+    if (!isDelivered) {
+      return res.status(400).json({ message: 'Order not delivered yet' });
+    }
+
+    order.cashReceivedByCourier = true;
+    order.cashReceivedAt = new Date();
+    order.paymentStatus = 'paid';
+    order.paidAt = new Date();
+    await order.save();
+
+    res.json({ message: 'Cash confirmed', order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * GET /api/orders/driver/cash-summary
+ * Driver's own cash summary: pending (received not submitted) + submitted total
+ */
+router.get('/driver/cash-summary', protect, driver, async (req, res) => {
+  try {
+    const driverFilter = [
+      { assignedDriver: req.user._id },
+      ...(req.user.telegramId ? [{ driverTelegramId: req.user.telegramId }] : []),
+    ];
+
+    const [pending, submitted] = await Promise.all([
+      Order.find({
+        $and: [
+          { $or: driverFilter },
+          { $or: [{ deliveryStatus: 'delivered' }, { status: { $in: ['completed', 'delivered'] } }] },
+        ],
+        paymentMethod: 'cash',
+        cashSubmittedToAdmin: { $ne: true },
+      }).select('totalPrice customerName createdAt cashReceivedAt cashReceivedByCourier'),
+
+      Order.find({
+        $or: driverFilter,
+        paymentMethod: 'cash',
+        cashSubmittedToAdmin: true,
+      }).select('totalPrice cashSubmittedAt cashSubmitBatch'),
+    ]);
+
+    const pendingTotal = pending.reduce((s, o) => s + (o.totalPrice || 0), 0);
+    const submittedTotal = submitted.reduce((s, o) => s + (o.totalPrice || 0), 0);
+
+    res.json({ pending, pendingTotal, submitted: submitted.length, submittedTotal });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/orders/driver/submit-cash
+ * Driver submits all pending cash to admin in bulk
+ */
+router.post('/driver/submit-cash', protect, driver, async (req, res) => {
+  try {
+    const driverFilter = [
+      { assignedDriver: req.user._id },
+      ...(req.user.telegramId ? [{ driverTelegramId: req.user.telegramId }] : []),
+    ];
+
+    const pendingOrders = await Order.find({
+      $and: [
+        { $or: driverFilter },
+        { $or: [{ deliveryStatus: 'delivered' }, { status: { $in: ['completed', 'delivered'] } }] },
+      ],
+      paymentMethod: 'cash',
+      cashSubmittedToAdmin: { $ne: true },
+    });
+
+    if (pendingOrders.length === 0) {
+      return res.status(400).json({ message: 'No pending cash to submit' });
+    }
+
+    const batchId = `batch_${Date.now()}_${req.user._id}`;
+    const total = pendingOrders.reduce((s, o) => s + (o.totalPrice || 0), 0);
+    const now = new Date();
+
+    await Order.updateMany(
+      { _id: { $in: pendingOrders.map(o => o._id) } },
+      { cashSubmittedToAdmin: true, cashSubmittedAt: now, cashSubmitBatch: batchId }
+    );
+
+    // Notify admin via Telegram if possible
+    try {
+      const { getBot } = require('../services/notifications');
+      const bot = getBot();
+      const adminUsers = await TelegramUser.find({ role: { $in: ['admin', 'manager'] }, isActive: true }).select('telegramId');
+      const driverName = req.user.name || req.user.firstName || 'Haydovchi';
+      const msg = `💵 <b>Naqd pul topshirildi</b>\n\nHaydovchi: ${driverName}\nSumma: <b>${total.toLocaleString()} so'm</b>\nBuyurtmalar: ${pendingOrders.length} ta\nBatch: <code>${batchId}</code>`;
+      for (const admin of adminUsers) {
+        bot?.telegram?.sendMessage(admin.telegramId, msg, { parse_mode: 'HTML' }).catch(() => {});
+      }
+    } catch (e) { /* non-fatal */ }
+
+    res.json({ message: 'Cash submitted', count: pendingOrders.length, total, batchId });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * GET /api/orders/admin/cash-summary
+ * Admin — see cash balance per courier
+ */
+router.get('/admin/cash-summary', protect, admin, async (req, res) => {
+  try {
+    const pipeline = [
+      {
+        $match: {
+          paymentMethod: 'cash',
+          $and: [
+            {
+              $or: [
+                { deliveryStatus: 'delivered' },
+                { status: { $in: ['completed', 'delivered'] } },
+              ],
+            },
+            {
+              $or: [
+                { assignedDriver: { $ne: null } },
+                { driverTelegramId: { $ne: null } },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        $group: {
+          _id: { driver: '$assignedDriver', driverTelegramId: '$driverTelegramId' },
+          pendingTotal: {
+            $sum: { $cond: [{ $ne: ['$cashSubmittedToAdmin', true] }, '$totalPrice', 0] },
+          },
+          pendingCount: {
+            $sum: { $cond: [{ $ne: ['$cashSubmittedToAdmin', true] }, 1, 0] },
+          },
+          submittedTotal: {
+            $sum: { $cond: [{ $eq: ['$cashSubmittedToAdmin', true] }, '$totalPrice', 0] },
+          },
+          submittedCount: {
+            $sum: { $cond: [{ $eq: ['$cashSubmittedToAdmin', true] }, 1, 0] },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id.driver',
+          foreignField: '_id',
+          as: 'driverInfo',
+        },
+      },
+    ];
+
+    const rows = await Order.aggregate(pipeline);
+
+    // Enrich with TelegramUser data for drivers without web account
+    const telegramIds = rows
+      .filter(r => !r.driverInfo?.length && r._id.driverTelegramId)
+      .map(r => r._id.driverTelegramId);
+
+    const tgUsers = telegramIds.length
+      ? await TelegramUser.find({ telegramId: { $in: telegramIds } }).select('firstName phone telegramId').lean()
+      : [];
+    const tgMap = Object.fromEntries(tgUsers.map(u => [u.telegramId, u]));
+
+    const result = rows.map(r => {
+      const webDriver = r.driverInfo?.[0];
+      const tgDriver = tgMap[r._id.driverTelegramId];
+      return {
+        driverId: r._id.driver || r._id.driverTelegramId,
+        driverName: webDriver?.name || tgDriver?.firstName || 'Noma\'lum haydovchi',
+        driverPhone: webDriver?.phone || tgDriver?.phone || '',
+        pendingTotal: r.pendingTotal,
+        pendingCount: r.pendingCount,
+        submittedTotal: r.submittedTotal,
+        submittedCount: r.submittedCount,
+      };
+    });
+
+    res.json({ drivers: result });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// =====================================================
+// OPERATOR ENDPOINTS
+// =====================================================
+
+/**
+ * GET /api/orders/operator/feed
+ * Operator — get new/processing orders feed (real-time list)
+ */
+router.get('/operator/feed', protect, operator, async (req, res) => {
+  try {
+    const orders = await Order.find({
+      status: { $in: ['new', 'processing', 'confirmed'] },
+    })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate('assignedDriver', 'name phone');
+
+    const result = await Promise.all(
+      orders.map(async (o) => {
+        const items = await OrderItem.find({ order: o._id });
+        return { ...o.toObject(), items };
+      })
+    );
+    res.json({ orders: result });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/orders/:id/operator/confirm-cash
+ * Operator — mark cash payment as confirmed (collected by courier)
+ */
+router.post('/:id/operator/confirm-cash', protect, operator, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    order.paymentStatus = 'paid';
+    order.paymentMethod = 'cash';
+    order.paidAt = new Date();
+    await order.save();
+
+    res.json({ message: 'Cash confirmed', order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/orders/:id/operator/assign-driver
+ * Operator — assign a driver to an order
+ */
+router.post('/:id/operator/assign-driver', protect, operator, async (req, res) => {
+  try {
+    const { driverId } = req.body;
+    if (!driverId) return res.status(400).json({ message: 'driverId required' });
+
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const driverUser = await User.findById(driverId);
+    if (!driverUser || driverUser.role !== 'driver') {
+      return res.status(400).json({ message: 'Invalid driver' });
+    }
+
+    order.assignedDriver = driverId;
+    order.deliveryStatus = 'assigned';
+    order.status = 'processing';
+    await order.save();
+
+    res.json({ message: 'Driver assigned', order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/orders/:id/operator/status
+ * Operator — update order status (new→processing→confirmed etc.)
+ */
+router.post('/:id/operator/status', protect, operator, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const valid = ['processing', 'confirmed', 'cancelled'];
+    if (!valid.includes(status)) return res.status(400).json({ message: 'Invalid status' });
+
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    order.status = status;
+    await order.save();
+
+    // ── Broadcast to all Telegram drivers when processing or confirmed ──
+    if ((status === 'confirmed' || status === 'processing') && !order.assignedDriver && !order.driverTelegramId) {
+      const { notifyDriversOfNewOrder } = require('../services/notifications');
+      const OrderItem = require('../models/OrderItem');
+      const items = await OrderItem.find({ order: order._id }).lean();
+      const sent = await notifyDriversOfNewOrder(order, items);
+      if (sent.length) {
+        const { redis } = require('../config/redis');
+        await redis.setex(`order:${order._id}:driver_notif`, 3600, JSON.stringify(sent));
+      }
+    }
+
+    res.json({ message: 'Status updated', order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * GET /api/orders/operator/drivers
+ * Operator — get list of available drivers to assign
+ */
+router.get('/operator/drivers', protect, operator, async (req, res) => {
+  try {
+    const [drivers, tgDrivers] = await Promise.all([
+      User.find({ role: 'driver', isActive: true }).select('name phone email').lean(),
+      TelegramUser.find({ role: 'driver', isActive: true }).select('firstName phone telegramId').lean(),
+    ]);
+    const combined = [
+      ...drivers.map(d => ({ _id: d._id, name: d.name, phone: d.phone, email: d.email, source: 'web' })),
+      ...tgDrivers.map(d => ({ _id: d._id, name: d.firstName || 'Kurer', phone: d.phone, telegramId: d.telegramId, source: 'telegram' })),
+    ];
+    res.json({ drivers: combined });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });

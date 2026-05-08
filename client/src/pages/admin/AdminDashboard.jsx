@@ -24,6 +24,7 @@ const STATUS_COLORS = {
   completed: 'bg-green-100 text-green-700',
   cancelled: 'bg-red-100 text-red-700',
 }
+
 const STATUS_LABELS = {
   new: 'Новый', processing: 'В обработке', confirmed: 'Подтверждён', completed: 'Выполнен', cancelled: 'Отменён',
 }
@@ -67,7 +68,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-ink font-display tracking-wide">Панель управления</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-ink font-display tracking-wide">Панель управления</h1>
           <p className="text-ink-dim mt-1">Обзор e-commerce</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-ink-dim">
@@ -77,16 +78,16 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {mainCards.map((card) => {
           const Icon = card.icon
           return (
-            <Link key={card.name} to={card.link} className="group relative overflow-hidden bg-bg-surface rounded-2xl p-5 shadow-card border border-ink-line hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+            <Link key={card.name} to={card.link} className="group relative overflow-hidden bg-bg-surface rounded-xl p-4 shadow-card border border-ink-line hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
               <div className="flex items-start justify-between mb-3">
                 <div className={`bg-gradient-to-br ${card.color} p-2.5 rounded-xl shadow-lg`}><Icon className="text-white" size={20} /></div>
                 <ArrowUpRight size={16} className="text-ink-line group-hover:text-ink-dim transition-colors" />
               </div>
-              <p className="text-2xl font-bold text-ink font-display">{card.value}</p>
+              <p className="text-lg sm:text-xl font-bold text-ink font-display leading-tight">{card.value}</p>
               <p className="text-sm text-ink-dim mt-0.5">{card.name}</p>
               {card.sub && <p className="text-xs text-ink-mute mt-1">{card.sub}</p>}
               <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${card.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
@@ -96,14 +97,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Revenue chart + Recent Orders */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Revenue by month */}
-        <div className="lg:col-span-2 bg-bg-surface rounded-2xl shadow-card border border-ink-line p-5">
+        <div className="xl:col-span-2 bg-bg-surface rounded-xl shadow-card border border-ink-line p-5 overflow-x-auto">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 size={18} className="text-emerald-600" />
             <h2 className="text-lg font-semibold text-ink">Выручка по месяцам</h2>
           </div>
-          <div className="flex items-end gap-2 h-48">
+          <div className="flex items-end gap-2 h-48 min-w-[500px]">
             {Array.from({ length: 12 }, (_, i) => {
               const m = (data?.revenueByMonth || []).find(r => r._id === i + 1)
               const rev = m?.revenue || 0
@@ -122,8 +123,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent Orders */}
-        <div className="bg-bg-surface rounded-2xl shadow-card border border-ink-line">
-          <div className="flex items-center justify-between p-5 border-b border-ink-line">
+        <div className="bg-bg-surface rounded-xl shadow-card border border-ink-line">
+          <div className="flex items-center justify-between p-4 border-b border-ink-line">
             <h2 className="font-semibold text-ink flex items-center gap-2"><ShoppingBag size={16} className="text-blue-600" /> Новые заказы</h2>
             <Link to="/admin/orders" className="text-sm text-primary flex items-center gap-1"><ArrowRight size={14} /></Link>
           </div>
@@ -147,9 +148,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* Bottom row: Top Products + Districts + Payment */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {/* Top Products */}
-        <div className="bg-bg-surface rounded-2xl shadow-card border border-ink-line p-5">
+        <div className="bg-bg-surface rounded-xl shadow-card border border-ink-line p-4">
           <h2 className="font-semibold text-ink flex items-center gap-2 mb-3"><Package size={16} className="text-primary" /> Топ товары</h2>
           <div className="space-y-2">
             {(data?.topProducts || []).slice(0, 5).map((p, i) => (
@@ -163,7 +164,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Districts */}
-        <div className="bg-bg-surface rounded-2xl shadow-card border border-ink-line p-5">
+        <div className="bg-bg-surface rounded-xl shadow-card border border-ink-line p-4">
           <h2 className="font-semibold text-ink flex items-center gap-2 mb-3"><MapPin size={16} className="text-amber-600" /> Районы</h2>
           <div className="space-y-2">
             {(data?.ordersByDistrict || []).slice(0, 5).map((d, i) => (
@@ -177,7 +178,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Payment methods */}
-        <div className="bg-bg-surface rounded-2xl shadow-card border border-ink-line p-5">
+        <div className="bg-bg-surface rounded-xl shadow-card border border-ink-line p-4">
           <h2 className="font-semibold text-ink flex items-center gap-2 mb-3"><CreditCard size={16} className="text-emerald-600" /> Оплата</h2>
           <div className="space-y-3">
             {(data?.ordersByPayment || []).map((p, i) => (

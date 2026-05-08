@@ -5,6 +5,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const TelegramUser = require('../models/TelegramUser');
 const { protect, admin } = require('../middleware/auth');
+const { notifyRoleChanged } = require('../services/notifications');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -30,11 +31,14 @@ router.post('/register', protect, admin, [
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    const allowedRoles = ['admin', 'manager', 'technician', 'customer', 'driver'];
+    const finalRole = allowedRoles.includes(role) ? role : 'technician';
+
     const user = await User.create({
       name,
       email,
       password,
-      role: role || 'technician',
+      role: finalRole,
       phone,
     });
 
@@ -88,51 +92,113 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
-// =====================================================
-// STAGE 1: ADMIN PREMIUM MANAGEMENT
-// =====================================================
+// ── TELEGRAM MINI APP AUTH ───────────────────────────────────────────────
+const crypto = require('crypto');
+
+function verifyTelegramInitData(initData) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) throw new Error('TELEGRAM_BOT_TOKEN not set');
+
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash');
+  if (!hash) return null;
+  params.delete('hash');
+
+  // Sort keys and build data-check string
+  const keys = [...params.keys()].sort();
+  const dataCheckString = keys.map(k => `${k}=${params.get(k)}`).join('\n');
+
+  // Compute secret = HMAC_SHA256(bot_token, "WebAppData")
+  const secret = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+  // Compute hash = HMAC_SHA256(data_check_string, secret)
+  const computedHash = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
+
+  if (computedHash !== hash) return null;
+
+  // Parse user object
+  const userJson = params.get('user');
+  if (!userJson) return null;
+  try {
+    return JSON.parse(decodeURIComponent(userJson));
+  } catch {
+    return null;
+  }
+}
 
 /**
- * POST /api/admin/users/:id/premium
- * Stage 1: Grant or revoke premium status for a user
- * Body: { isPremium: boolean, durationDays: number }
+ * POST /api/auth/telegram/init
+ * Verify Telegram Mini App initData and auto-authenticate user.
+ * Body: { initData: string }
  */
-router.post('/admin/users/:id/premium', protect, admin, async (req, res) => {
+router.post('/telegram/init', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { isPremium, durationDays = 30 } = req.body;
+    const { initData } = req.body;
+    if (!initData) return res.status(400).json({ message: 'initData required' });
 
-    // Try User model first, then TelegramUser
-    let user = await User.findById(id);
-    let isTg = false;
+    const tgUser = verifyTelegramInitData(initData);
+    if (!tgUser) return res.status(401).json({ message: 'Invalid initData' });
+
+    const telegramId = String(tgUser.id);
+
+    // Find or create User linked to this Telegram account
+    let user = await User.findOne({ telegramId });
     if (!user) {
-      user = await TelegramUser.findById(id);
-      isTg = true;
-    }
-    if (!user) return res.status(404).json({ message: 'User not found' });
+      const safeEmail = `tg_${telegramId}@telegram.meatzone.uz`;
+      const randomPassword = crypto.randomBytes(32).toString('hex');
 
-    user.isPremium = isPremium;
-    if (isPremium) {
-      user.premiumExpiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
-      if (!isTg) user.userType = 'premium';
-    } else {
-      user.premiumExpiresAt = null;
-      if (!isTg) user.userType = 'regular';
+      user = await User.create({
+        name: tgUser.first_name || tgUser.username || `TG_${telegramId}`,
+        email: safeEmail,
+        password: randomPassword,
+        role: 'customer',
+        telegramId,
+        telegramUsername: tgUser.username || '',
+      });
     }
 
-    await user.save();
+    // Upsert TelegramUser record (sync with bot)
+    await TelegramUser.findOneAndUpdate(
+      { telegramId },
+      {
+        firstName: tgUser.first_name || '',
+        lastName: tgUser.last_name || '',
+        username: tgUser.username || '',
+        languageCode: tgUser.language_code || 'uz',
+        lastActiveAt: new Date(),
+      },
+      { upsert: true, new: true }
+    );
 
     res.json({
-      message: isPremium ? 'Premium status granted' : 'Premium status revoked',
+      token: generateToken(user._id),
       user: {
         _id: user._id,
-        name: isTg ? (user.firstName || '') : (user.name || ''),
-        isPremium: user.isPremium,
-        premiumExpiresAt: user.premiumExpiresAt,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        telegramId: user.telegramId,
       },
     });
   } catch (error) {
-    console.error('Premium update error:', error);
+    console.error('Telegram init auth error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// =====================================================
+// DRIVER MANAGEMENT
+// =====================================================
+
+/**
+ * GET /api/auth/drivers
+ * Get all drivers
+ */
+router.get('/drivers', protect, admin, async (req, res) => {
+  try {
+    const drivers = await User.find({ role: 'driver' }).select('-password').sort({ createdAt: -1 });
+    res.json(drivers);
+  } catch (error) {
+    console.error('Get drivers error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -146,7 +212,7 @@ router.put('/admin/users/:id/role', protect, admin, async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    const allowed = ['admin', 'manager', 'technician', 'customer'];
+    const allowed = ['admin', 'manager', 'technician', 'customer', 'driver', 'operator'];
     if (!allowed.includes(role)) {
       return res.status(400).json({ message: `Invalid role. Allowed: ${allowed.join(', ')}` });
     }
@@ -165,14 +231,84 @@ router.put('/admin/users/:id/role', protect, admin, async (req, res) => {
       return res.status(400).json({ message: 'Cannot remove your own admin role' });
     }
 
+    const oldRole = user.role;
     user.role = role;
     await user.save();
+
+    // Sync role to linked TelegramUser if this is a web User with telegramId
+    if (!isTg && user.telegramId) {
+      try {
+        await TelegramUser.findOneAndUpdate(
+          { telegramId: user.telegramId },
+          { role }
+        );
+        console.log(`[role] Synced TelegramUser ${user.telegramId} role to ${role}`);
+      } catch (syncErr) {
+        console.error(`[role] Failed to sync TelegramUser role:`, syncErr.message);
+      }
+    }
+
+    // Send Telegram notification to any user that has a telegramId
+    const telegramIdToNotify = user.telegramId || null;
+    if (telegramIdToNotify) {
+      try {
+        let lang = 'uz';
+        if (isTg) {
+          lang = ['ru', 'uz'].includes(user.languageCode) ? user.languageCode : 'uz';
+        } else {
+          // Web user — look up TelegramUser for their language preference
+          const tgUser = await TelegramUser.findOne({ telegramId: telegramIdToNotify });
+          if (tgUser) lang = ['ru', 'uz'].includes(tgUser.languageCode) ? tgUser.languageCode : 'uz';
+        }
+        await notifyRoleChanged(telegramIdToNotify, role, lang);
+        console.log(`[role] Notification sent to ${telegramIdToNotify}: role ${oldRole} -> ${role}`);
+      } catch (notifyErr) {
+        console.error(`[role] Failed to notify ${telegramIdToNotify}:`, notifyErr.message);
+      }
+    }
+
     res.json({
-      message: `Role changed to ${role}`,
+      message: `Role changed from ${oldRole} to ${role}`,
       user: { _id: user._id, name: isTg ? (user.firstName || '') : (user.name || ''), role: user.role },
     });
   } catch (error) {
     console.error('Role update error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * PUT /api/admin/users/:id/status
+ * Toggle user active/inactive status
+ * Body: { isActive: boolean }
+ */
+router.put('/admin/users/:id/status', protect, admin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    // Try User model first, then TelegramUser
+    let user = await User.findById(id);
+    let isTg = false;
+    if (!user) {
+      user = await TelegramUser.findById(id);
+      isTg = true;
+    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Prevent deactivating own account
+    if (!isTg && String(user._id) === String(req.user._id) && !isActive) {
+      return res.status(400).json({ message: 'Cannot deactivate your own account' });
+    }
+
+    user.isActive = isActive;
+    await user.save();
+    res.json({
+      message: `User ${isActive ? 'activated' : 'deactivated'}`,
+      user: { _id: user._id, isActive: user.isActive },
+    });
+  } catch (error) {
+    console.error('Status update error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -183,17 +319,16 @@ router.put('/admin/users/:id/role', protect, admin, async (req, res) => {
  */
 router.get('/admin/users', protect, admin, async (req, res) => {
   try {
-    const { isPremium, page = 1, limit = 20 } = req.query;
-    const premFilter = isPremium !== undefined ? isPremium === 'true' : null;
+    const { role, page = 1, limit = 20 } = req.query;
 
     // 1. Get all web-app users
     const userQuery = {};
-    if (premFilter !== null) userQuery.isPremium = premFilter;
+    if (role) userQuery.role = role;
     const webUsers = await User.find(userQuery).select('-password').sort({ createdAt: -1 }).lean();
 
     // 2. Get all telegram bot users
     const tgQuery = {};
-    if (premFilter !== null) tgQuery.isPremium = premFilter;
+    if (role) tgQuery.role = role;
     const tgUsers = await TelegramUser.find(tgQuery).sort({ createdAt: -1 }).lean();
 
     // 3. Merge: index webUsers by telegramId for dedup
@@ -208,8 +343,6 @@ router.get('/admin/users', protect, admin, async (req, res) => {
         email: u.email || '',
         phone: u.phone || '',
         role: u.role || 'customer',
-        isPremium: u.isPremium || false,
-        premiumExpiresAt: u.premiumExpiresAt || null,
         telegramId: u.telegramId || '',
         telegramUsername: u.telegramUsername || '',
         isActive: u.isActive !== false,
@@ -228,8 +361,6 @@ router.get('/admin/users', protect, admin, async (req, res) => {
         email: '',
         phone: t.phone || '',
         role: t.role || 'customer',
-        isPremium: t.isPremium || false,
-        premiumExpiresAt: t.premiumExpiresAt || null,
         telegramId: t.telegramId || '',
         telegramUsername: t.username || '',
         isActive: !t.isBanned,
@@ -275,8 +406,6 @@ router.post('/admin/broadcast', protect, admin, async (req, res) => {
     }
 
     const query = { telegramId: { $exists: true, $ne: null } };
-    if (userType === 'premium') query.isPremium = true;
-    if (userType === 'regular') query.isPremium = { $ne: true };
 
     const users = await User.find(query).select('telegramId name');
 

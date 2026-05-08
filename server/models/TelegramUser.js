@@ -9,7 +9,9 @@ const telegramUserSchema = new mongoose.Schema({
   phone: { type: String, default: '' },
   isPremium: { type: Boolean, default: false },
   premiumExpiresAt: { type: Date, default: null },
-  role: { type: String, enum: ['admin', 'manager', 'customer'], default: 'customer' },
+  role: { type: String, enum: ['admin', 'manager', 'operator', 'driver', 'customer'], default: 'customer' },
+  onboardingDone: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
   isBanned: { type: Boolean, default: false },
   lastActiveAt: { type: Date, default: Date.now },
 }, { timestamps: true });

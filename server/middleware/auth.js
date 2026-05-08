@@ -31,4 +31,28 @@ const admin = (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin };
+const driver = (req, res, next) => {
+  if (req.user && req.user.role === 'driver') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as driver' });
+  }
+};
+
+const adminOrDriver = (req, res, next) => {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'driver')) {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized' });
+  }
+};
+
+const operator = (req, res, next) => {
+  if (req.user && (req.user.role === 'operator' || req.user.role === 'admin')) {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as operator' });
+  }
+};
+
+module.exports = { protect, admin, driver, adminOrDriver, operator };
