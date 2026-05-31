@@ -31,7 +31,7 @@ router.post('/register', protect, admin, [
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const allowedRoles = ['admin', 'manager', 'technician', 'customer', 'driver'];
+    const allowedRoles = ['admin', 'technician', 'customer', 'driver'];
     const finalRole = allowedRoles.includes(role) ? role : 'technician';
 
     const user = await User.create({
@@ -128,11 +128,11 @@ function verifyTelegramInitData(initData) {
 /**
  * POST /api/auth/telegram/init
  * Verify Telegram Mini App initData and auto-authenticate user.
- * Body: { initData: string }
+ * Body: { initData: string, tgData: { firstName, lastName, username, languageCode, isPremium, photoUrl } }
  */
 router.post('/telegram/init', async (req, res) => {
   try {
-    const { initData } = req.body;
+    const { initData, tgData } = req.body;
     if (!initData) return res.status(400).json({ message: 'initData required' });
 
     const tgUser = verifyTelegramInitData(initData);
@@ -156,16 +156,19 @@ router.post('/telegram/init', async (req, res) => {
       });
     }
 
-    // Upsert TelegramUser record (sync with bot)
+    // Upsert TelegramUser record (sync with bot) - store ALL Telegram data
+    const updateData = {
+      firstName: tgData?.firstName || tgUser.first_name || '',
+      lastName: tgData?.lastName || tgUser.last_name || '',
+      username: tgData?.username || tgUser.username || '',
+      languageCode: tgData?.languageCode || tgUser.language_code || 'uz',
+      isPremium: tgData?.isPremium || tgUser.is_premium || false,
+      lastActiveAt: new Date(),
+    };
+
     await TelegramUser.findOneAndUpdate(
       { telegramId },
-      {
-        firstName: tgUser.first_name || '',
-        lastName: tgUser.last_name || '',
-        username: tgUser.username || '',
-        languageCode: tgUser.language_code || 'uz',
-        lastActiveAt: new Date(),
-      },
+      updateData,
       { upsert: true, new: true }
     );
 
@@ -177,6 +180,13 @@ router.post('/telegram/init', async (req, res) => {
         email: user.email,
         role: user.role,
         telegramId: user.telegramId,
+        telegramData: {
+          firstName: updateData.firstName,
+          lastName: updateData.lastName,
+          username: updateData.username,
+          languageCode: updateData.languageCode,
+          isPremium: updateData.isPremium,
+        }
       },
     });
   } catch (error) {
@@ -212,7 +222,7 @@ router.put('/admin/users/:id/role', protect, admin, async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    const allowed = ['admin', 'manager', 'technician', 'customer', 'driver', 'operator'];
+    const allowed = ['admin', 'technician', 'customer', 'driver'];
     if (!allowed.includes(role)) {
       return res.status(400).json({ message: `Invalid role. Allowed: ${allowed.join(', ')}` });
     }
@@ -234,6 +244,18 @@ router.put('/admin/users/:id/role', protect, admin, async (req, res) => {
     const oldRole = user.role;
     user.role = role;
     await user.save();
+
+    // Sync Redis bot:admins for immediate bot access
+    try {
+      const { redis } = require('../config/redis');
+      if (role === 'admin' && oldRole !== 'admin') {
+        if (isTg) await redis.sadd('bot:admins', user.telegramId);
+        else if (user.telegramId) await redis.sadd('bot:admins', user.telegramId);
+      } else if (oldRole === 'admin' && role !== 'admin') {
+        if (isTg) await redis.srem('bot:admins', user.telegramId);
+        else if (user.telegramId) await redis.srem('bot:admins', user.telegramId);
+      }
+    } catch (e) { console.error('[bot:admins] Redis sync error:', e.message); }
 
     // Sync role to linked TelegramUser if this is a web User with telegramId
     if (!isTg && user.telegramId) {
@@ -427,6 +449,36 @@ router.post('/admin/broadcast', protect, admin, async (req, res) => {
     res.json({ sent, failed, total: users.length });
   } catch (error) {
     console.error('Broadcast error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/telegram/profile
+ * Update Telegram user's phone and location after permission granted.
+ * Body: { phone?: string, location?: { lat, lng, address? } }
+ */
+router.post('/telegram/profile', async (req, res) => {
+  try {
+    const { initData, phone, location } = req.body;
+    if (!initData) return res.status(400).json({ message: 'initData required' });
+
+    const tgUser = verifyTelegramInitData(initData);
+    if (!tgUser) return res.status(401).json({ message: 'Invalid initData' });
+
+    const telegramId = String(tgUser.id);
+    const updateData = { lastActiveAt: new Date() };
+    if (phone) updateData.phone = phone;
+    if (location) updateData.location = location;
+
+    await TelegramUser.findOneAndUpdate({ telegramId }, updateData, { new: true });
+
+    // Also update User model phone if exists
+    await User.findOneAndUpdate({ telegramId }, { phone });
+
+    res.json({ success: true, message: 'Profile updated' });
+  } catch (error) {
+    console.error('Telegram profile update error:', error);
     res.status(500).json({ message: error.message });
   }
 });

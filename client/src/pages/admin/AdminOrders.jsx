@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { ordersAPI } from '../../services/api'
-import { ShoppingCart, Trash2, Phone, User, Search, Eye, MapPin, CreditCard, Filter, Truck, Users, ChevronDown, ChevronUp, Package } from 'lucide-react'
+import { ShoppingCart, Trash2, Phone, User, Search, Eye, MapPin, CreditCard, Filter, Truck, Users, ChevronDown, ChevronUp, Package, RefreshCw, Bell } from 'lucide-react'
 
 const STATUS_LABELS = {
   new: { label: 'Новый', color: 'bg-blue-100 text-blue-700' },
@@ -35,6 +36,9 @@ export default function AdminOrders() {
   const [viewedIds, setViewedIds] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('meatzone_viewed_orders') || '[]')) } catch { return new Set() }
   })
+  const [newOrderToast, setNewOrderToast] = useState(null)
+  const prevOrderIds = useRef(new Set())
+  const [autoRefresh, setAutoRefresh] = useState(true)
 
   const markViewed = (id) => {
     setViewedIds(prev => {
@@ -48,8 +52,8 @@ export default function AdminOrders() {
 
   const isNewUnviewed = (order) => order.status === 'new' && !viewedIds.has(order._id)
 
-  const fetchOrders = async () => {
-    setLoading(true)
+  const fetchOrders = async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const params = { page, limit: 20 }
       if (statusFilter) params.status = statusFilter
@@ -58,13 +62,38 @@ export default function AdminOrders() {
       if (dateFrom) params.dateFrom = dateFrom
       if (dateTo) params.dateTo = dateTo
       const res = await ordersAPI.getAll(params)
-      setOrders(res.data.orders || [])
-      setTotal(res.data.total || 0)
+      const newOrders = res.data.orders || []
+      const newTotal = res.data.total || 0
+
+      // Detect new orders (not in previous fetch)
+      const currentIds = new Set(newOrders.map(o => o._id))
+      if (prevOrderIds.current.size > 0) {
+        const arrived = newOrders.filter(o => !prevOrderIds.current.has(o._id))
+        if (arrived.length > 0) {
+          const latest = arrived[0]
+          setNewOrderToast({
+            count: arrived.length,
+            name: latest.customerName || '—',
+            total: latest.totalPrice || 0,
+          })
+          setTimeout(() => setNewOrderToast(null), 5000)
+        }
+      }
+      prevOrderIds.current = currentIds
+
+      setOrders(newOrders)
+      setTotal(newTotal)
     } catch { }
-    setLoading(false)
+    if (!silent) setLoading(false)
   }
 
-  useEffect(() => { fetchOrders() }, [page, statusFilter, paymentFilter, dateFrom, dateTo])
+  // Initial fetch + poll every 10s
+  useEffect(() => {
+    fetchOrders()
+    if (!autoRefresh) return
+    const interval = setInterval(() => fetchOrders(true), 10000)
+    return () => clearInterval(interval)
+  }, [page, statusFilter, paymentFilter, dateFrom, dateTo, autoRefresh, searchQuery])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -113,6 +142,32 @@ export default function AdminOrders() {
 
   return (
     <div className="space-y-4">
+      {/* New order toast */}
+      {newOrderToast && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3"
+        >
+          <Bell size={18} className="text-amber-600 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-amber-800">
+              {newOrderToast.count} новый заказ!
+            </p>
+            <p className="text-xs text-amber-700">
+              {newOrderToast.name} — {Number(newOrderToast.total).toLocaleString('ru-RU')} сум
+            </p>
+          </div>
+          <button
+            onClick={() => setNewOrderToast(null)}
+            className="text-xs text-amber-600 font-bold px-2 py-1 rounded bg-amber-100 hover:bg-amber-200"
+          >
+            ОК
+          </button>
+        </motion.div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
@@ -120,6 +175,16 @@ export default function AdminOrders() {
           <p className="text-gray-600 text-sm">{total} заказов</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setAutoRefresh(v => !v)}
+            className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm transition-colors ${autoRefresh ? 'bg-green-50 border-green-200 text-green-700' : 'hover:bg-gray-50'}`}
+            title={autoRefresh ? 'Автообновление вкл.' : 'Автообновление выкл.'}
+          >
+            <RefreshCw size={14} className={autoRefresh ? 'animate-spin' : ''} style={{ animationDuration: '3s' }} /> {autoRefresh ? 'Авто' : 'Вручную'}
+          </button>
+          <button onClick={() => fetchOrders()} className="flex items-center gap-2 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50">
+            <RefreshCw size={14} /> Обновить
+          </button>
           <button onClick={() => setGroupByUser(v => !v)} className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm transition-colors ${groupByUser ? 'bg-blue-50 border-blue-200 text-blue-700' : 'hover:bg-gray-50'}`}>
             <Users size={14} /> {groupByUser ? 'Список' : 'По клиентам'}
           </button>

@@ -101,6 +101,18 @@ export default function Orders() {
       </div>
 
       <div className="px-4 pt-4 flex flex-col gap-4">
+        {/* Order count for Telegram users */}
+        {autoMode && orders.length > 0 && (
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-primary">
+              {lang === 'uz' ? 'Sizning buyurtmalaringiz' : lang === 'en' ? 'Your orders' : 'Ваши заказы'}
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-primary text-white text-xs font-bold">
+              {orders.length}
+            </span>
+          </div>
+        )}
+
         {/* Search box — always visible */}
         <div className="bg-bg-surface rounded-lg border border-ink-line p-4">
           <label className="block text-sm font-bold text-ink mb-2">

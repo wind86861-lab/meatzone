@@ -39,6 +39,18 @@ function DeliveryTab() {
         delivery_enabled: form.delivery_enabled,
         delivery_free_until: form.delivery_free_until || null,
       })
+      // Refetch to sync form with server (promo may be auto-cleared)
+      const r = await deliveryAPI.getSettings()
+      setCfg(r.data)
+      setForm({
+        delivery_enabled: r.data.enabled,
+        delivery_price_per_km: r.data.pricePerKm,
+        delivery_free_threshold: r.data.freeThreshold,
+        delivery_free_until: r.data.freeUntil ? new Date(r.data.freeUntil).toISOString().slice(0, 10) : '',
+        delivery_min_fee: r.data.minFee,
+        store_lat: r.data.storeLat,
+        store_lng: r.data.storeLng,
+      })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch { alert('Xato saqlashda') }
@@ -59,7 +71,11 @@ function DeliveryTab() {
             <p className="text-sm text-gray-500 mt-0.5">Yoqilganda mijozlardan yetkazish haqqi olinadi</p>
           </div>
           <button
-            onClick={() => f('delivery_enabled', !form.delivery_enabled)}
+            onClick={() => {
+              const next = !form.delivery_enabled
+              f('delivery_enabled', next)
+              if (next === true) f('delivery_free_until', '')
+            }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${form.delivery_enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}
           >
             {form.delivery_enabled ? <><ToggleRight size={20} /> Yoqilgan</> : <><ToggleLeft size={20} /> O'chirilgan</>}

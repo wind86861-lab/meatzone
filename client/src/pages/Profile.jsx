@@ -1,18 +1,82 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, MapPin, Phone, HelpCircle, ChevronRight } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, HelpCircle, ChevronRight, User, Globe, Sun, Moon } from 'lucide-react'
 import { useLangStore } from '../store/langStore'
+import { useAuthStore } from '../store/authStore'
+import { useThemeStore } from '../store/themeStore'
 import { t } from '../utils/i18n'
 
 export default function Profile() {
   const navigate = useNavigate()
   const { lang, setLang } = useLangStore()
+  const { theme, toggle: toggleTheme } = useThemeStore()
+  const { telegramUser, isTelegram, user, requestTelegramPhone, requestTelegramLocation } = useAuthStore()
+  const [phone, setPhone] = useState('')
+  const [location, setLocation] = useState(null)
+  const [phoneRequested, setPhoneRequested] = useState(false)
+  const [locRequested, setLocRequested] = useState(false)
+
+  // Get display name from Telegram or fallback
+  const displayName = telegramUser
+    ? `${telegramUser.firstName} ${telegramUser.lastName || ''}`.trim()
+    : user?.name || 'MEATZONE'
+
+  const username = telegramUser?.username ? `@${telegramUser.username}` : ''
+  const locationText = location
+    ? `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`
+    : isTelegram
+      ? 'Tap to share your location'
+      : 'Tashkent, Uzbekistan'
+
+  const handleRequestPhone = async () => {
+    setPhoneRequested(true)
+    const result = await requestTelegramPhone()
+    if (result.success) {
+      setPhone(result.phone)
+    } else {
+      setPhoneRequested(false)
+    }
+  }
+
+  const handleRequestLocation = async () => {
+    setLocRequested(true)
+    const result = await requestTelegramLocation()
+    if (result.success) {
+      setLocation({ lat: result.lat, lng: result.lng })
+    } else {
+      setLocRequested(false)
+    }
+  }
 
   const MENU = [
-    { icon: MapPin, label: 'Saved delivery addresses', desc: 'Change to name fetched from Telegram account' },
-    { icon: Phone, label: 'Phone', desc: 'Get from Telegram when opened through Telegram' },
-    { icon: HelpCircle, label: 'Contact operator', desc: 'Company contact information' },
+    {
+      icon: User,
+      label: displayName,
+      desc: username || (telegramUser ? `ID: ${telegramUser.telegramId}` : 'Guest user'),
+      isHeader: true,
+    },
+    {
+      icon: MapPin,
+      label: 'My addresses',
+      desc: locationText,
+      onClick: isTelegram ? handleRequestLocation : undefined,
+      clickable: isTelegram && !location,
+    },
+    {
+      icon: Phone,
+      label: 'Phone',
+      desc: phone || (isTelegram ? 'Tap to get from Telegram' : '+998 90 123 45 67'),
+      onClick: isTelegram && !phone ? handleRequestPhone : undefined,
+      clickable: isTelegram && !phone,
+    },
+    {
+      icon: HelpCircle,
+      label: 'Help',
+      desc: 'Contact operator',
+      onClick: () => window.open('https://t.me/meatzone_support', '_blank'),
+      clickable: true,
+    },
   ]
 
   return (
@@ -27,15 +91,24 @@ export default function Profile() {
         <div className="font-display text-2xl tracking-wide text-white">{t(lang, 'profile.title')}</div>
       </div>
 
-      {/* User card */}
+      {/* Telegram user card */}
       <div className="px-4 pt-5">
         <div className="bg-bg-surface rounded-xl border border-ink-line p-5 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-primary-600 flex items-center justify-center text-2xl">
-            🥩
-          </div>
+          {telegramUser?.photoUrl ? (
+            <img src={telegramUser.photoUrl} alt="" className="w-14 h-14 rounded-full object-cover" />
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-primary-600 flex items-center justify-center text-2xl">
+              🥩
+            </div>
+          )}
           <div>
-            <div className="font-display text-xl text-ink tracking-wide">MEATZONE</div>
-            <div className="text-xs text-ink-dim">{lang === 'ru' ? 'Ташкент, Узбекистан' : lang === 'en' ? 'Tashkent, Uzbekistan' : "Toshkent, O'zbekiston"}</div>
+            <div className="font-display text-xl text-ink tracking-wide">{displayName}</div>
+            <div className="text-xs text-ink-dim">
+              {isTelegram
+                ? (lang === 'ru' ? 'Авторизован через Telegram' : lang === 'en' ? 'Signed in via Telegram' : 'Telegram orqali tizimga kirildi')
+                : (lang === 'ru' ? 'Ташкент, Узбекистан' : lang === 'en' ? 'Tashkent, Uzbekistan' : "Toshkent, O'zbekiston")
+              }
+            </div>
           </div>
         </div>
       </div>
@@ -48,7 +121,9 @@ export default function Profile() {
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-bg-surface rounded-lg border border-ink-line p-3.5 flex items-center gap-3 text-left tap"
+            onClick={item.onClick}
+            disabled={!item.clickable}
+            className={`bg-bg-surface rounded-lg border border-ink-line p-3.5 flex items-center gap-3 text-left tap ${item.clickable ? 'active:scale-[0.98]' : ''}`}
           >
             <div className="w-9 h-9 rounded-md bg-bg-surface3 border border-ink-line flex items-center justify-center text-ink-dim">
               <item.icon size={16} />
@@ -57,7 +132,7 @@ export default function Profile() {
               <div className="text-sm font-bold text-ink">{item.label}</div>
               <div className="text-[11px] text-ink-dim">{item.desc}</div>
             </div>
-            <ChevronRight size={16} className="text-ink-dim" />
+            {item.clickable && <ChevronRight size={16} className="text-ink-dim" />}
           </motion.button>
         ))}
       </div>
@@ -68,18 +143,43 @@ export default function Profile() {
           <span className="text-sm font-bold text-ink">{t(lang, 'profile.language')}</span>
           <div className="flex gap-2">
             <button onClick={() => setLang('uz')}
-              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'uz' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
-              UZ
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-colors ${lang === 'uz' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              <span className="text-base leading-none">🇺🇿</span>
+              <span>UZ</span>
             </button>
             <button onClick={() => setLang('ru')}
-              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'ru' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
-              RU
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-colors ${lang === 'ru' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              <span className="text-base leading-none">🇷🇺</span>
+              <span>RU</span>
             </button>
             <button onClick={() => setLang('en')}
-              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'en' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
-              EN
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-colors ${lang === 'en' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              <span className="text-base leading-none">🇬🇧</span>
+              <span>EN</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Theme */}
+      <div className="px-4 pt-3 pb-6">
+        <div className="bg-bg-surface rounded-lg border border-ink-line p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {theme === 'dark' ? <Moon size={16} className="text-ink-dim" /> : <Sun size={16} className="text-ink-dim" />}
+            <span className="text-sm font-bold text-ink">
+              {lang === 'ru' ? 'Тема' : lang === 'en' ? 'Theme' : 'Mavzu'}
+            </span>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className={`relative h-7 w-12 rounded-full transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-bg-surface3'}`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow flex items-center justify-center transition-transform ${theme === 'dark' ? 'translate-x-5' : 'translate-x-0'}`}
+            >
+              {theme === 'dark' ? <Moon size={12} className="text-primary" /> : <Sun size={12} className="text-amber-500" />}
+            </span>
+          </button>
         </div>
       </div>
     </motion.div>

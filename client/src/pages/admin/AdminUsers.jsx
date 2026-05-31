@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Users, Search, UserCheck, Truck, Shield, User, Phone, Mail, Calendar } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Users, Search, UserCheck, Truck, Shield, User, Phone, Mail, Calendar, ChevronRight } from 'lucide-react'
 import { usersAPI } from '../../services/api'
 
 const ROLE_LABELS = {
@@ -11,6 +12,7 @@ const ROLE_LABELS = {
 }
 
 export default function AdminUsers() {
+  const navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -122,7 +124,7 @@ export default function AdminUsers() {
                   const roleInfo = ROLE_LABELS[user.role] || ROLE_LABELS.customer
                   const RoleIcon = roleInfo.icon
                   return (
-                    <tr key={user._id} className="hover:bg-gray-50">
+                    <tr key={user._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/users/${user._id}`, { state: { user } })}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-xs">
@@ -149,7 +151,8 @@ export default function AdminUsers() {
                       <td className="px-4 py-3 text-center">
                         <select
                           value={user.role}
-                          onChange={(e) => handleRoleChange(user._id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => { e.stopPropagation(); handleRoleChange(user._id, e.target.value) }}
                           className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${roleInfo.color}`}
                         >
                           {Object.entries(ROLE_LABELS).map(([value, { label }]) => (
@@ -159,10 +162,10 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
-                          onClick={() => handleToggleActive(user._id, user.isActive)}
+                          onClick={(e) => { e.stopPropagation(); handleToggleActive(user._id, user.isActive) }}
                           className={`text-xs px-2 py-1 rounded-full font-medium ${user.isActive
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-600'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600'
                             }`}
                         >
                           {user.isActive ? 'Faol' : 'Nofaol'}
@@ -175,8 +178,8 @@ export default function AdminUsers() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <RoleIcon size={16} className="text-gray-400" />
+                        <div className="flex items-center justify-center">
+                          <ChevronRight size={16} className="text-gray-300" />
                         </div>
                       </td>
                     </tr>

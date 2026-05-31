@@ -53,6 +53,11 @@ const orderSchema = new mongoose.Schema({
   deliveryFee: { type: Number, default: 0 },
   isFreeDelivery: { type: Boolean, default: false },
 
+  // Route info (from Mapbox)
+  distance: { type: Number, default: null },
+  duration: { type: String, default: null },
+  routeGeometry: { type: Object, default: null },
+
   // Stage 1: Payment status
   paymentStatus: {
     type: String,
@@ -138,6 +143,25 @@ const orderSchema = new mongoose.Schema({
     unique: true,
     sparse: true,
     index: true,
+  },
+
+  // Cash collection tracking (for COD orders)
+  cashCollected: {
+    type: Boolean,
+    default: false,
+  },
+  cashCollectedAt: {
+    type: Date,
+    default: null,
+  },
+  cashHandedOver: {
+    type: Boolean,
+    default: false,
+  },
+  handoverRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CashHandover',
+    default: null,
   },
 }, {
   timestamps: true,

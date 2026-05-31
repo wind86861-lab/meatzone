@@ -18,15 +18,19 @@ function haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Google Maps Distance Matrix — returns road distance in km
-// Falls back to Haversine if GOOGLE_MAPS_API_KEY is not set
+// Mapbox Directions API — returns road distance in km
+// Falls back to Haversine if MAPBOX_ACCESS_TOKEN is not set
 async function getRoadDistance(originLat, originLng, destLat, destLng) {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
+  const token = process.env.MAPBOX_ACCESS_TOKEN;
+  console.log('[delivery] MAPBOX token exists:', !!token, 'store:', originLat, originLng, 'dest:', destLat, destLng);
+  if (!token) {
+    console.log('[delivery] No MAPBOX token, using haversine');
     return { distance: haversine(originLat, originLng, destLat, destLng), source: 'haversine' };
   }
 
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${originLat},${originLng}&destinations=${destLat},${destLng}&mode=driving&units=metric&key=${apiKey}`;
+  // Mapbox expects coordinates as {lng},{lat};{lng},{lat}
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?access_token=${token}&geometries=geojson`;
+  console.log('[delivery] Mapbox URL:', url);
 
   return new Promise((resolve) => {
     https.get(url, (res) => {
@@ -35,18 +39,25 @@ async function getRoadDistance(originLat, originLng, destLat, destLng) {
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          const element = json.rows?.[0]?.elements?.[0];
-          if (element?.status === 'OK') {
-            const km = element.distance.value / 1000;
-            resolve({ distance: km, source: 'google_maps', duration: element.duration.text });
+          console.log('[delivery] Mapbox response code:', res.statusCode, 'routes:', json.routes?.length, 'message:', json.message);
+          if (json.routes && json.routes.length > 0) {
+            const route = json.routes[0];
+            const km = route.distance / 1000;
+            const minutes = Math.round(route.duration / 60);
+            const durationText = minutes < 60 ? `${minutes} мин` : `${Math.floor(minutes / 60)} ч ${minutes % 60} мин`;
+            console.log('[delivery] Mapbox success:', km, 'km,', durationText);
+            resolve({ distance: km, source: 'mapbox', duration: durationText, geometry: route.geometry || null });
           } else {
+            console.log('[delivery] Mapbox no routes, fallback to haversine');
             resolve({ distance: haversine(originLat, originLng, destLat, destLng), source: 'haversine_fallback' });
           }
-        } catch {
+        } catch (e) {
+          console.log('[delivery] Mapbox parse error:', e.message);
           resolve({ distance: haversine(originLat, originLng, destLat, destLng), source: 'haversine_fallback' });
         }
       });
-    }).on('error', () => {
+    }).on('error', (e) => {
+      console.log('[delivery] Mapbox request error:', e.message);
       resolve({ distance: haversine(originLat, originLng, destLat, destLng), source: 'haversine_fallback' });
     });
   });
@@ -84,22 +95,33 @@ async function getDeliverySettings() {
 router.post('/estimate', async (req, res) => {
   try {
     const { lat, lng, orderTotal = 0 } = req.body;
+    console.log('[delivery/estimate] req body:', req.body);
     const cfg = await getDeliverySettings();
+    console.log('[delivery/estimate] settings:', cfg);
+
+    // Always calculate distance if lat/lng provided
+    let distanceResult = null;
+    if (lat && lng) {
+      distanceResult = await getRoadDistance(cfg.storeLat, cfg.storeLng, Number(lat), Number(lng));
+      console.log('[delivery/estimate] distance:', distanceResult);
+    }
+
+    const roundDist = (d) => d !== null && d !== undefined ? Math.round(d * 10) / 10 : null;
 
     // Delivery disabled → always free
     if (!cfg.enabled) {
-      return res.json({ fee: 0, isFree: true, reason: 'disabled', distance: null });
+      return res.json({ fee: 0, isFree: true, reason: 'disabled', distance: roundDist(distanceResult?.distance), duration: distanceResult?.duration || null });
     }
 
     // Free promo period
     const now = new Date();
     if (cfg.freeUntil && now <= cfg.freeUntil) {
-      return res.json({ fee: 0, isFree: true, reason: 'promo_period', freeUntil: cfg.freeUntil, distance: null });
+      return res.json({ fee: 0, isFree: true, reason: 'promo_period', freeUntil: cfg.freeUntil, distance: roundDist(distanceResult?.distance), duration: distanceResult?.duration || null });
     }
 
     // Free above threshold
     if (Number(orderTotal) >= cfg.freeThreshold) {
-      return res.json({ fee: 0, isFree: true, reason: 'free_threshold', distance: null });
+      return res.json({ fee: 0, isFree: true, reason: 'free_threshold', distance: roundDist(distanceResult?.distance), duration: distanceResult?.duration || null });
     }
 
     // No GPS — return min fee
@@ -107,18 +129,21 @@ router.post('/estimate', async (req, res) => {
       return res.json({ fee: cfg.minFee, isFree: false, reason: 'no_gps', distance: null });
     }
 
-    const { distance, source, duration } = await getRoadDistance(cfg.storeLat, cfg.storeLng, Number(lat), Number(lng));
+    const distance = distanceResult?.distance || 0;
     const fee = Math.max(cfg.minFee, Math.round(distance * cfg.pricePerKm / 500) * 500);
+    console.log('[delivery/estimate] result:', { fee, distance, source: distanceResult?.source, duration: distanceResult?.duration });
 
     res.json({
       fee,
       isFree: false,
       reason: 'distance',
       distance: Math.round(distance * 10) / 10,
-      distanceSource: source,
-      duration: duration || null,
+      distanceSource: distanceResult?.source || 'haversine',
+      duration: distanceResult?.duration || null,
+      geometry: distanceResult?.geometry || null,
     });
   } catch (error) {
+    console.error('[delivery/estimate] error:', error.message);
     res.status(500).json({ message: error.message });
   }
 });
@@ -130,7 +155,7 @@ router.post('/estimate', async (req, res) => {
 router.get('/settings', async (req, res) => {
   try {
     const cfg = await getDeliverySettings();
-    res.json(cfg);
+    res.json({ ...cfg, mapboxToken: process.env.MAPBOX_ACCESS_TOKEN || null });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -162,9 +187,18 @@ router.put('/settings', protect, admin, async (req, res) => {
       store_lng,
     };
 
+    // If admin explicitly enables delivery, auto-clear promo period so pricing takes effect
+    if (delivery_enabled === true) {
+      updates.delivery_free_until = null;
+    }
+
     for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined && value !== '') {
         await Settings.findOneAndUpdate({ key }, { key, value }, { upsert: true, new: true });
+      }
+      // Allow null to clear a setting (e.g. freeUntil)
+      if (value === null) {
+        await Settings.findOneAndUpdate({ key }, { key, value: null }, { upsert: true, new: true });
       }
     }
 

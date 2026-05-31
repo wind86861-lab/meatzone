@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { categoriesAPI, uploadAPI } from '../../services/api'
 import { Plus, Pencil, Trash2, X, ChevronDown, ChevronRight, FolderOpen, Folder, Search, Tag, ImageIcon } from 'lucide-react'
+import ImageCropper from '../../components/ImageCropper'
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([])
@@ -19,6 +20,7 @@ export default function AdminCategories() {
   })
   const [imageUploading, setImageUploading] = useState(false)
   const [imagePreview, setImagePreview] = useState('')
+  const [cropperImage, setCropperImage] = useState(null)
 
   useEffect(() => { fetchCategories() }, [])
 
@@ -33,8 +35,8 @@ export default function AdminCategories() {
 
   const parentCategories = categories.filter(c => !c.parent)
   const subcategoriesOf = (parentId) => categories.filter(c => {
-    const pid = c.parent?._id || c.parent
-    return pid === parentId
+    const pid = String(c.parent?._id || c.parent || '')
+    return pid === String(parentId)
   })
 
   const filteredParents = parentCategories.filter(c => {
@@ -75,14 +77,23 @@ export default function AdminCategories() {
     setShowModal(true)
   }
 
-  const handleImageUpload = async (file) => {
+  const handleImageSelect = (file) => {
     if (!file) return
     if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return }
-    setImagePreview(URL.createObjectURL(file))
+    const reader = new FileReader()
+    reader.onload = () => {
+      setCropperImage(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropComplete = async (croppedBlob) => {
+    setCropperImage(null)
+    setImagePreview(URL.createObjectURL(croppedBlob))
     setImageUploading(true)
     try {
       const fd = new FormData()
-      fd.append('image', file)
+      fd.append('image', croppedBlob, 'category.jpg')
       const res = await uploadAPI.single(fd)
       setForm(f => ({ ...f, image: res.data.url }))
     } catch { setImagePreview(form.image || ''); alert('Upload failed') }
@@ -127,7 +138,7 @@ export default function AdminCategories() {
   const totalSubcategories = categories.filter(c => c.parent).length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-white rounded-2xl p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -153,7 +164,7 @@ export default function AdminCategories() {
             placeholder="Поиск категорий..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-2.5 bg-white text-gray-900 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex bg-gray-100 rounded-lg p-1 text-sm">
@@ -181,8 +192,9 @@ export default function AdminCategories() {
                   </button>
                   <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {cat.image
-                      ? <img src={cat.image} alt="" className="w-full h-full object-cover" />
-                      : <FolderOpen size={16} className="text-blue-600" />}
+                      ? <img src={cat.image} alt="" className="w-full h-full object-cover" onError={e => { e.target.onerror = null; e.target.src = ''; e.target.style.display = 'none'; }} />
+                      : null}
+                    {!cat.image && <FolderOpen size={16} className="text-blue-600" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-900 text-sm">{cat.name?.uz}</p>
@@ -240,7 +252,7 @@ export default function AdminCategories() {
               </div>
             )
           })}
-        </div>
+        </div >
       ) : (
         /* Flat List View */
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -292,83 +304,95 @@ export default function AdminCategories() {
       )}
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
-            <div className="flex items-center justify-between p-5 border-b">
-              <div>
-                <h2 className="text-lg font-bold">{editing ? 'Редактировать' : 'Добавить'} {form.parent ? 'подкатегорию' : 'категорию'}</h2>
-                {form.parent && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    В составе: <span className="font-medium text-blue-600">{parentCategories.find(c => c._id === form.parent)?.name?.uz}</span>
-                  </p>
-                )}
+      {
+        showModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
+              <div className="flex items-center justify-between p-5 border-b">
+                <div>
+                  <h2 className="text-lg font-bold">{editing ? 'Редактировать' : 'Добавить'} {form.parent ? 'подкатегорию' : 'категорию'}</h2>
+                  {form.parent && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      В составе: <span className="font-medium text-blue-600">{parentCategories.find(c => String(c._id) === String(form.parent))?.name?.uz}</span>
+                    </p>
+                  )}
+                </div>
+                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Название</label>
-                <input placeholder="Name (UZ)" value={form.name.uz} onChange={e => setForm(f => ({ ...f, name: { ...f.name, uz: e.target.value } }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-                <input placeholder="Name (RU)" value={form.name.ru} onChange={e => setForm(f => ({ ...f, name: { ...f.name, ru: e.target.value } }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-                <input placeholder="Name (EN)" value={form.name.en} onChange={e => setForm(f => ({ ...f, name: { ...f.name, en: e.target.value } }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-              </div>
-              {/* Image Upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Rasm (Ixtiyoriy)</label>
-                {imagePreview ? (
-                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200">
-                    <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
-                    {imageUploading && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    )}
-                    <button type="button" onClick={removeImage} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
-                      <X size={14} />
-                    </button>
+              <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Название</label>
+                  <input placeholder="Name (UZ)" value={form.name.uz} onChange={e => setForm(f => ({ ...f, name: { ...f.name, uz: e.target.value } }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                  <input placeholder="Name (RU)" value={form.name.ru} onChange={e => setForm(f => ({ ...f, name: { ...f.name, ru: e.target.value } }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                  <input placeholder="Name (EN)" value={form.name.en} onChange={e => setForm(f => ({ ...f, name: { ...f.name, en: e.target.value } }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                </div>
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rasm (Ixtiyoriy)</label>
+                  {imagePreview ? (
+                    <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200">
+                      <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+                      {imageUploading && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                      <button type="button" onClick={removeImage} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
+                      <input type="file" accept="image/*" className="hidden" onChange={e => handleImageSelect(e.target.files[0])} />
+                      {imageUploading
+                        ? <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        : <>
+                          <ImageIcon size={28} className="text-gray-400 mb-2" />
+                          <span className="text-sm text-gray-500 font-medium">Rasm yuklash</span>
+                          <span className="text-xs text-gray-400 mt-1">Max 5MB</span>
+                        </>
+                      }
+                    </label>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Родительская категория</label>
+                    <select value={form.parent} onChange={e => setForm(f => ({ ...f, parent: e.target.value }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Нет (верхний уровень)</option>
+                      {parentCategories.filter(c => c._id !== editing).map(c => (
+                        <option key={c._id} value={c._id}>{c.name?.uz}</option>
+                      ))}
+                    </select>
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
-                    <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e.target.files[0])} />
-                    {imageUploading
-                      ? <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                      : <>
-                        <ImageIcon size={28} className="text-gray-400 mb-2" />
-                        <span className="text-sm text-gray-500 font-medium">Rasm yuklash</span>
-                        <span className="text-xs text-gray-400 mt-1">Max 5MB</span>
-                      </>
-                    }
-                  </label>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Родительская категория</label>
-                  <select value={form.parent} onChange={e => setForm(f => ({ ...f, parent: e.target.value }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Нет (верхний уровень)</option>
-                    {parentCategories.filter(c => c._id !== editing).map(c => (
-                      <option key={c._id} value={c._id}>{c.name?.uz}</option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Порядок</label>
+                    <input type="number" value={form.order} onChange={e => setForm(f => ({ ...f, order: e.target.value }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Порядок</label>
-                  <input type="number" value={form.order} onChange={e => setForm(f => ({ ...f, order: e.target.value }))} className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} className="w-4 h-4 text-blue-600 rounded" />
+                  <span className="text-sm text-gray-700">Активен (видно пользователям)</span>
+                </label>
+                <div className="flex justify-end gap-3 pt-3 border-t">
+                  <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50">Отмена</button>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">{editing ? 'Обновить' : 'Создать'}</button>
                 </div>
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} className="w-4 h-4 text-blue-600 rounded" />
-                <span className="text-sm text-gray-700">Активен (видно пользователям)</span>
-              </label>
-              <div className="flex justify-end gap-3 pt-3 border-t">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50">Отмена</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">{editing ? 'Обновить' : 'Создать'}</button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
+        )
+      }
+
+      {/* Image Cropper */}
+      {cropperImage && (
+        <ImageCropper
+          image={cropperImage}
+          aspect={16 / 9}
+          onComplete={handleCropComplete}
+          onCancel={() => setCropperImage(null)}
+        />
       )}
-    </div>
+    </div >
   )
 }

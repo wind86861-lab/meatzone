@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import api, { ordersAPI, usersAPI } from '../../services/api'
-import { ArrowLeft, CheckCircle, Clock, CreditCard, ExternalLink, MapPin, MessageSquare, Package, Phone, Printer, QrCode, RotateCcw, Trash2, Truck, User, X } from 'lucide-react'
+import api, { ordersAPI, deliveryAPI } from '../../services/api'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import { ArrowLeft, CheckCircle, Clock, CreditCard, ExternalLink, MapPin, MessageSquare, Navigation, Package, Phone, Printer, QrCode, RotateCcw, Trash2, Truck, User, X } from 'lucide-react'
 
 const STATUS_LABELS = {
   new: { label: 'Новый', color: 'bg-blue-100 text-blue-700' },
@@ -32,6 +34,12 @@ export default function AdminOrderDetail() {
   const [qrData, setQrData] = useState(null)
   const [qrLoading, setQrLoading] = useState(false)
 
+  // Route map
+  const [mapboxToken, setMapboxToken] = useState(null)
+  const [storeLoc, setStoreLoc] = useState(null)
+  const mapContainerRef = useRef(null)
+  const mapRef = useRef(null)
+
   const fmt = (n) => Number(n || 0).toLocaleString('ru-RU')
 
   useEffect(() => {
@@ -51,6 +59,72 @@ export default function AdminOrderDetail() {
     } catch { alert('Заказ не найден') }
     setLoading(false)
   }
+
+  // Fetch delivery settings (store location + mapbox token)
+  useEffect(() => {
+    deliveryAPI.getSettings().then(res => {
+      setStoreLoc({ lat: res.data.storeLat, lng: res.data.storeLng })
+      setMapboxToken(res.data.mapboxToken || null)
+    }).catch(() => { })
+  }, [])
+
+  // Initialize route map when order + store + token available
+  useEffect(() => {
+    if (!mapContainerRef.current || !mapboxToken || !storeLoc || !order?.latitude || !order?.longitude) return
+
+    mapboxgl.accessToken = mapboxToken
+    if (mapRef.current) {
+      mapRef.current.remove()
+      mapRef.current = null
+    }
+
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [(storeLoc.lng + order.longitude) / 2, (storeLoc.lat + order.latitude) / 2],
+      zoom: 12,
+    })
+    mapRef.current = map
+
+    // Shop marker
+    new mapboxgl.Marker({ color: '#ef4444' })
+      .setLngLat([storeLoc.lng, storeLoc.lat])
+      .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('Магазин'))
+      .addTo(map)
+
+    // Customer marker
+    new mapboxgl.Marker({ color: '#22c55e' })
+      .setLngLat([order.longitude, order.latitude])
+      .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('Клиент'))
+      .addTo(map)
+
+    // Fit bounds
+    const bounds = new mapboxgl.LngLatBounds()
+    bounds.extend([storeLoc.lng, storeLoc.lat])
+    bounds.extend([order.longitude, order.latitude])
+    map.fitBounds(bounds, { padding: 40, maxZoom: 14 })
+
+    // Add route geometry if available
+    map.on('load', () => {
+      if (order.routeGeometry && order.routeGeometry.coordinates) {
+        map.addSource('route', {
+          type: 'geojson',
+          data: { type: 'Feature', properties: {}, geometry: order.routeGeometry }
+        })
+        map.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#ef4444', 'line-width': 4 }
+        })
+      }
+    })
+
+    return () => {
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
+    }
+  }, [order, storeLoc, mapboxToken])
 
   const handleConfirm = async () => {
     setSaving(true)
@@ -204,8 +278,6 @@ export default function AdminOrderDetail() {
   if (loading) return <div className="p-12 text-center text-gray-400">Загрузка...</div>
   if (!order) return <div className="p-12 text-center text-gray-400">Заказ не найден</div>
 
-  const mapUrl = order.latitude ? `https://maps.google.com/?q=${order.latitude},${order.longitude}` : null
-
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
@@ -263,20 +335,26 @@ export default function AdminOrderDetail() {
             </div>
           </div>
 
-          {/* Map */}
-          {mapUrl && (
+          {/* Route Map */}
+          {order.latitude && order.longitude && mapboxToken && (
             <div className="bg-white rounded-xl border p-5">
-              <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-3"><MapPin size={16} /> Геолокация</h2>
-              <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="block">
-                <img
-                  src={`https://maps.googleapis.com/maps/api/staticmap?center=${order.latitude},${order.longitude}&zoom=15&size=600x200&markers=color:red|${order.latitude},${order.longitude}&key=placeholder`}
-                  alt="Map"
-                  className="w-full h-48 bg-gray-100 rounded-lg object-cover"
-                  onError={(e) => { e.target.style.display = 'none' }}
-                />
-                <p className="text-sm text-blue-600 mt-2 flex items-center gap-1">
-                  <ExternalLink size={14} /> Открыть в Google Maps ({order.latitude.toFixed(4)}, {order.longitude.toFixed(4)})
-                </p>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-bold text-gray-900 flex items-center gap-2"><Navigation size={16} /> Маршрут доставки</h2>
+                {order.distance !== null && (
+                  <div className="text-sm text-gray-600">
+                    🚗 {order.distance} km
+                    {order.duration && ` • ~${order.duration}`}
+                  </div>
+                )}
+              </div>
+              <div ref={mapContainerRef} className="w-full h-[260px] bg-gray-100 rounded-lg" />
+              <a
+                href={`https://www.google.com/maps/dir/${storeLoc?.lat},${storeLoc?.lng}/${order.latitude},${order.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 mt-2 flex items-center gap-1"
+              >
+                <ExternalLink size={14} /> Открыть маршрут в Google Maps
               </a>
             </div>
           )}
@@ -382,6 +460,11 @@ export default function AdminOrderDetail() {
                   </a>
                 )}
               </div>
+            ) : order.driverTelegramId ? (
+              <div className="text-sm space-y-1">
+                <p className="font-medium text-gray-900">Курьер назначен (Telegram)</p>
+                <p className="text-gray-500">ID: {order.driverTelegramId}</p>
+              </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-gray-500">Водитель не назначен</p>
@@ -389,7 +472,7 @@ export default function AdminOrderDetail() {
                   <select
                     value={selectedDriver}
                     onChange={e => setSelectedDriver(e.target.value)}
-                    className="flex-1 border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="flex-1 bg-white border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
                     <option value="">Выберите водителя</option>
                     {drivers.map(d => (

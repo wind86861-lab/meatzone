@@ -2,6 +2,8 @@ const { Telegraf, Markup } = require('telegraf');
 const Order = require('../models/Order');
 const OrderItem = require('../models/OrderItem');
 const TelegramUser = require('../models/TelegramUser');
+const User = require('../models/User');
+const CashHandover = require('../models/CashHandover');
 // const Branch = require('../models/Branch'); // deleted — meatshop has no branches
 const Settings = require('../models/Settings');
 const Product = require('../models/Product');
@@ -171,7 +173,15 @@ function createBot() {
   };
 
   const isOwner = (id) => getOwnerIds().includes(String(id));
-  const isBotAdmin = async (id) => (await getBotAdminIds()).includes(String(id));
+  const isBotAdmin = async (id) => {
+    const envIds = await getBotAdminIds();
+    if (envIds.includes(String(id))) return true;
+    // Also check MongoDB TelegramUser.role
+    try {
+      const u = await TelegramUser.findOne({ telegramId: String(id), role: 'admin' });
+      return !!u;
+    } catch { return false; }
+  };
   const canManage = async (id) => isOwner(id) || await isBotAdmin(id);
 
   const getOrderLines = async (orderId) => {
@@ -235,20 +245,20 @@ function createBot() {
     const prem = order.isPremiumOrder ? '👑 *PREMIUM* ' : '';
     const saved = order.originalTotalPrice > order.totalPrice
       ? `\n💚 _Скидка: ${fmt(order.originalTotalPrice - order.totalPrice)} сум_` : '';
+    const esc = (s) => String(s || '').replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
     const msg =
       `🔔 ${prem}*Новый заказ!*\n\n🆔 \`${order._id}\`\n` +
-      `👤 ${order.customerName || (from && from.first_name) || '—'}\n` +
-      `📱 ${order.customerPhone || '—'}\n📍 ${order.address || '—'}\n🏘️ ${order.district || '—'}\n` +
+      `👤 ${esc(order.customerName) || (from && esc(from.first_name)) || '—'}\n` +
+      `📱 ${esc(order.customerPhone) || '—'}\n📍 ${esc(order.address) || '—'}\n🏘️ ${esc(order.district) || '—'}\n` +
       (map ? `🗺️ [Карта](${map})\n` : '') +
       `💳 ${payL[order.paymentMethod] || '—'}\n💰 *${fmt(order.totalPrice)} сум*${saved}\n\n🛒 *Товары:*\n${lines.join('\n')}`;
     const ph = (order.customerPhone || '').replace(/\s/g, '');
     const kb = [
       [{ text: '✅ Подтвердить', callback_data: `adm_confirm_${order._id}` },
-      { text: '📞 Позвонить', url: `tel:${ph}` }],
-      [{ text: '🔍 Детали', callback_data: `adm_detail_${order._id}` },
-      { text: '🚚 Доставлен', callback_data: `adm_delivered_${order._id}` }],
-      [{ text: '❌ Отменить', callback_data: `adm_cancel_${order._id}` },
+      { text: '🔍 Детали', callback_data: `adm_detail_${order._id}` }],
+      [{ text: '🚚 Доставлен', callback_data: `adm_delivered_${order._id}` },
       { text: '📋 Телефон', callback_data: `adm_phone_${order._id}` }],
+      [{ text: '❌ Отменить', callback_data: `adm_cancel_${order._id}` }],
     ];
     if (process.env.ADMIN_PANEL_URL)
       kb.push([{ text: '🔗 Панель', url: `${process.env.ADMIN_PANEL_URL}/admin/orders/${order._id}` }]);
@@ -325,7 +335,6 @@ function createBot() {
   const driverMenu = Markup.keyboard([
     ['🚚 Mening buyurtmalarim', '📍 Yetkazish tarixi'],
     ['👤 Profilim', '💰 Daromadim'],
-    ['📞 Yordam'],
   ]).resize();
 
   const operatorMenu = Markup.keyboard([
@@ -334,8 +343,15 @@ function createBot() {
     ['📞 Yordam'],
   ]).resize();
 
+  const adminMenu = Markup.keyboard([
+    ['📋 Buyurtmalar', '📊 Statistika'],
+    ['👤 Foydalanuvchilar', '📢 Xabar yuborish'],
+    ['📞 Yordam'],
+  ]).resize();
+
   function getMainMenu(ctx) {
     const role = ctx.tgUser?.role || 'customer';
+    if (role === 'admin') return adminMenu;
     if (role === 'driver') return driverMenu;
     if (role === 'operator') return operatorMenu;
     return customerMenu;
@@ -794,9 +810,10 @@ function createBot() {
     const orderId = ctx.match[1];
     const order = await Order.findById(orderId);
     if (!order) return ctx.reply('❌ Заказ не найден.');
+    const esc = (s) => String(s || '').replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
     await botState.setState(String(ctx.from.id), { action: 'ADM_CONFIRM', orderId }, 600);
     await ctx.reply(
-      `📋 *Заказ:* \`${orderId}\`\n👤 ${order.customerName || '—'}\n📱 ${order.customerPhone || '—'}\n\n` +
+      `📋 *Заказ:* \`${orderId}\`\n👤 ${esc(order.customerName) || '—'}\n📱 ${esc(order.customerPhone) || '—'}\n\n` +
       'Введите *время доставки*:\n`ДД.ММ.ГГГГ ЧЧ:ММ`\n\nПример: `25.04.2026 14:30`',
       { parse_mode: 'Markdown' }
     );
@@ -813,9 +830,10 @@ function createBot() {
       const map = order.latitude && order.longitude ? `https://maps.google.com/?q=${order.latitude},${order.longitude}` : null;
       const stL = { new: '🆕 Новый', processing: '⚙️ В обработке', confirmed: '✅ Подтверждён', completed: '🏁 Завершён', cancelled: '❌ Отменён' };
       const pyL = { pending: '⏳ Ожидает', paid: '✅ Оплачено', failed: '❌ Не оплачено', refunded: '↩️ Возврат' };
+      const esc = (s) => String(s || '').replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
       await ctx.reply(
-        `📋 *Детали заказа*\n\n🆔 \`${order._id}\`\n👤 ${order.customerName || '—'}\n📱 ${order.customerPhone || '—'}\n` +
-        `📍 ${order.address || '—'}, ${order.district || '—'}\n` +
+        `📋 *Детали заказа*\n\n🆔 \`${order._id}\`\n👤 ${esc(order.customerName) || '—'}\n📱 ${esc(order.customerPhone) || '—'}\n` +
+        `📍 ${esc(order.address) || '—'}, ${esc(order.district) || '—'}\n` +
         (map ? `🗺️ [Карта](${map})\n` : '') +
         `📦 ${stL[order.status] || order.status}\n💳 ${pyL[order.paymentStatus] || order.paymentStatus}\n` +
         `🕐 ${order.createdAt.toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}\n` +
@@ -839,7 +857,8 @@ function createBot() {
         const msg = dict[l].orderDelivered.replace('{id}', order._id).replace('{catalog}', (process.env.SITE_URL || 'https://meatzone.uz') + '/catalog');
         await safeNotify(order.telegramId, msg);
       }
-      await editAdminMsg(order, `🏁 *Заказ доставлен*\n🆔 \`${order._id}\`\n👤 ${order.customerName || '—'}\n💰 ${fmt(order.totalPrice)} сум`);
+      const esc = (s) => String(s || '').replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
+      await editAdminMsg(order, `🏁 *Заказ доставлен*\n🆔 \`${order._id}\`\n👤 ${esc(order.customerName) || '—'}\n💰 ${fmt(order.totalPrice)} сум`);
       await ctx.reply(`✅ Заказ \`${order._id}\` помечен доставленным.`, { parse_mode: 'Markdown' });
     } catch (e) { ctx.reply('Ошибка: ' + e.message); }
   });
@@ -862,7 +881,7 @@ function createBot() {
     const tgLink = order.telegramId ? `\n✈️ [Написать в Telegram](tg://user?id=${order.telegramId})` : '';
     await ctx.reply(`📞 *Телефон клиента*\n\n\`${ph}\`${tgLink}`, {
       parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([[Markup.button.url('📞 Позвонить', `tel:${ph.replace(/\s/g, '')}`)]])
+      ...Markup.inlineKeyboard([[Markup.button.url('📞 Позвонить', `https://t.me/+${ph.replace(/\D/g, '')}`)]])
     });
   });
 
@@ -916,6 +935,9 @@ function createBot() {
     }
 
     try {
+      // Find the User that matches this Telegram driver
+      const driverUser = await User.findOne({ telegramId: String(tgUser.telegramId), role: 'driver' });
+
       // Atomic update — only succeeds if no driver assigned yet
       const order = await Order.findOneAndUpdate(
         {
@@ -925,7 +947,7 @@ function createBot() {
           driverTelegramId: null,
         },
         {
-          assignedDriver: null,
+          assignedDriver: driverUser ? driverUser._id : null,
           driverTelegramId: String(tgUser.telegramId),
           deliveryStatus: 'assigned',
         },
@@ -1046,12 +1068,28 @@ function createBot() {
 
       if (!order) return ctx.reply('❌ Buyurtma topilmadi yoki sizga tegishli emas.');
 
-      await ctx.editMessageText(
-        `✅ *Buyurtma yetkazildi!*\n\n` +
-        `💰 ${fmt(order.totalPrice)} so'm\n\n` +
-        `Rahmat! Yana buyurtmalar kuting.`,
-        { parse_mode: 'Markdown' }
-      );
+      // If COD order, ask if cash was collected
+      if (order.paymentMethod === 'cash' && !order.cashCollected) {
+        await ctx.editMessageText(
+          `✅ *Buyurtma yetkazildi!*\n\n` +
+          `💰 ${fmt(order.totalPrice)} so'm\n\n` +
+          `Naqd pul oldingizmi?`,
+          {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback('✅ Ha, oldim', `cash_collected:${orderId}`)],
+              [Markup.button.callback('❌ Yo\'q, olmadim', `cash_not_collected:${orderId}`)],
+            ]),
+          }
+        );
+      } else {
+        await ctx.editMessageText(
+          `✅ *Buyurtma yetkazildi!*\n\n` +
+          `💰 ${fmt(order.totalPrice)} so'm\n\n` +
+          `Rahmat! Yana buyurtmalar kuting.`,
+          { parse_mode: 'Markdown' }
+        );
+      }
 
       // Notify customer
       if (order.telegramId) {
@@ -1077,6 +1115,286 @@ function createBot() {
       logger.error('mark_delivered error', { error: err.message, orderId });
       ctx.reply('❌ Xatolik yuz berdi.');
     }
+  });
+
+  // Handle cash collected confirmation
+  bot.action(/^cash_collected:(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery('✅ Tasdiqlandi');
+    const orderId = ctx.match[1];
+    try {
+      await Order.findByIdAndUpdate(orderId, {
+        cashCollected: true,
+        cashCollectedAt: new Date(),
+      });
+      await ctx.editMessageText(
+        `✅ *Buyurtma yetkazildi!*\n\n` +
+        `💵 Naqd pul qabul qilindi: *${fmt((await Order.findById(orderId)).totalPrice)} so'm*\n\n` +
+        `Rahmat! Yana buyurtmalar kuting.`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (e) { logger.error('cash_collected error', { error: e.message }); }
+  });
+
+  bot.action(/^cash_not_collected:(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery('⚠️ Belgilandi');
+    const orderId = ctx.match[1];
+    try {
+      await Order.findByIdAndUpdate(orderId, {
+        cashCollected: false,
+      });
+      await ctx.editMessageText(
+        `✅ *Buyurtma yetkazildi!*\n\n` +
+        `⚠️ Naqd pul olinmadi.\n\n` +
+        `Rahmat! Yana buyurtmalar kuting.`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (e) { logger.error('cash_not_collected error', { error: e.message }); }
+  });
+
+  // ── CASH HANDOVER SUBMISSION ──────────────────────────────────────────────
+  bot.action('submit_cash_handover', async (ctx) => {
+    await ctx.answerCbQuery();
+    const tgUser = ctx.tgUser;
+    if (!tgUser || tgUser.role !== 'driver') return ctx.reply('⚠️ Faqat kurerlar uchun.');
+
+    try {
+      const driverUser = await User.findOne({ telegramId: String(tgUser.telegramId), role: 'driver' });
+      const orConditions = [
+        { driverTelegramId: String(tgUser.telegramId) },
+      ];
+      if (driverUser) {
+        orConditions.push({ assignedDriver: driverUser._id });
+      }
+
+      const cashOrders = await Order.find({
+        $or: orConditions,
+        status: 'completed',
+        paymentMethod: 'cash',
+        cashCollected: true,
+        cashHandedOver: false,
+      });
+
+      if (!cashOrders.length) {
+        return ctx.reply('📭 Topshirish uchun pul yo\'q.');
+      }
+
+      const totalAmount = cashOrders.reduce((s, o) => s + (o.totalPrice || 0), 0);
+      const orderIds = cashOrders.map(o => o._id);
+
+      // Create cash handover record
+      const handover = await CashHandover.create({
+        courier: driverUser?._id || null,
+        courierTelegramId: String(tgUser.telegramId),
+        courierName: tgUser.firstName || tgUser.username || 'Kurer',
+        submittedAmount: totalAmount,
+        expectedAmount: totalAmount,
+        orders: orderIds,
+        orderCount: cashOrders.length,
+        status: 'pending',
+        periodStart: cashOrders[cashOrders.length - 1].createdAt,
+        periodEnd: cashOrders[0].createdAt,
+      });
+
+      // Mark orders as handed over
+      await Order.updateMany(
+        { _id: { $in: orderIds } },
+        { cashHandedOver: true, handoverRef: handover._id }
+      );
+
+      await ctx.editMessageText(
+        `✅ *Pul topshirildi!*\n\n` +
+        `💵 Jami: *${fmt(totalAmount)} so'm*\n` +
+        `📦 Buyurtmalar: ${cashOrders.length} ta\n\n` +
+        `⏳ Admin tasdiqlashini kuting.`,
+        { parse_mode: 'Markdown' }
+      );
+
+      // Notify admin group
+      const gid = process.env.TELEGRAM_ADMIN_GROUP;
+      if (gid) {
+        const driverName = `${tgUser.firstName || ''} @${tgUser.username || tgUser.telegramId}`.trim();
+        await bot.telegram.sendMessage(gid,
+          `💵 *Kurer pul topshirdi*\n\n` +
+          `🚚 Kurer: ${driverName}\n` +
+          `💰 Summa: *${fmt(totalAmount)} so'm*\n` +
+          `📦 Buyurtmalar: ${cashOrders.length} ta\n` +
+          `🆔 Handover ID: \`${handover._id}\`\n\n` +
+          `⏳ Tasdiqlanishi kerak.`,
+          {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback('✅ Tasdiqlash', `confirm_handover:${handover._id}`)],
+              [Markup.button.callback('❌ Rad etish', `reject_handover:${handover._id}`)],
+            ]),
+          }
+        );
+      }
+    } catch (err) {
+      logger.error('submit_cash_handover error', { error: err.message });
+      ctx.reply('❌ Xatolik yuz berdi.');
+    }
+  });
+
+  // Admin confirms cash handover
+  bot.action(/^confirm_handover:(.+)$/, async (ctx) => {
+    if (!await canManage(ctx.from.id)) return ctx.answerCbQuery('❌ Ruxsat yo\'q');
+    await ctx.answerCbQuery('✅ Tasdiqlanmoqda...');
+    const handoverId = ctx.match[1];
+
+    try {
+      const handover = await CashHandover.findByIdAndUpdate(
+        handoverId,
+        {
+          status: 'confirmed',
+          confirmedAt: new Date(),
+          confirmedBy: ctx.from.id,
+          confirmedByName: `${ctx.from.first_name || ''} @${ctx.from.username || ctx.from.id}`.trim(),
+        },
+        { new: true }
+      );
+
+      if (!handover) return ctx.reply('❌ Topilmadi.');
+
+      await ctx.editMessageText(
+        `✅ *Pul qabul qilindi*\n\n` +
+        `🚚 Kurer: ${handover.courierName}\n` +
+        `💰 Summa: *${fmt(handover.submittedAmount)} so'm*\n` +
+        `📦 Buyurtmalar: ${handover.orderCount} ta\n` +
+        `✅ Tasdiqlagan: ${handover.confirmedByName}`,
+        { parse_mode: 'Markdown' }
+      );
+
+      // Notify courier
+      await bot.telegram.sendMessage(
+        handover.courierTelegramId,
+        `✅ *Pul qabul qilindi!*\n\n` +
+        `💵 ${fmt(handover.submittedAmount)} so'm tasdiqlandi.\n\n` +
+        `Rahmat!`,
+        { parse_mode: 'Markdown' }
+      ).catch(() => { });
+    } catch (err) {
+      logger.error('confirm_handover error', { error: err.message });
+      ctx.reply('❌ Xatolik yuz berdi.');
+    }
+  });
+
+  // Admin rejects cash handover
+  bot.action(/^reject_handover:(.+)$/, async (ctx) => {
+    if (!await canManage(ctx.from.id)) return ctx.answerCbQuery('❌ Ruxsat yo\'q');
+    await ctx.answerCbQuery('❌ Rad etilmoqda...');
+    const handoverId = ctx.match[1];
+
+    try {
+      const handover = await CashHandover.findByIdAndUpdate(
+        handoverId,
+        {
+          status: 'rejected',
+          confirmedAt: new Date(),
+          confirmedBy: ctx.from.id,
+          confirmedByName: `${ctx.from.first_name || ''} @${ctx.from.username || ctx.from.id}`.trim(),
+        },
+        { new: true }
+      );
+
+      if (!handover) return ctx.reply('❌ Topilmadi.');
+
+      // Unmark orders
+      await Order.updateMany(
+        { _id: { $in: handover.orders } },
+        { cashHandedOver: false, handoverRef: null }
+      );
+
+      await ctx.editMessageText(
+        `❌ *Pul rad etildi*\n\n` +
+        `🚚 Kurer: ${handover.courierName}\n` +
+        `💰 Summa: ${fmt(handover.submittedAmount)} so'm\n` +
+        `❌ Rad etgan: ${handover.confirmedByName}`,
+        { parse_mode: 'Markdown' }
+      );
+
+      // Notify courier
+      await bot.telegram.sendMessage(
+        handover.courierTelegramId,
+        `❌ *Pul rad etildi*\n\n` +
+        `💵 ${fmt(handover.submittedAmount)} so'm rad etildi.\n\n` +
+        `Iltimos, admin bilan bog\'laning.`,
+        { parse_mode: 'Markdown' }
+      ).catch(() => { });
+    } catch (err) {
+      logger.error('reject_handover error', { error: err.message });
+      ctx.reply('❌ Xatolik yuz berdi.');
+    }
+  });
+
+  // ── DRIVER ORDER DETAILS ────────────────────────────────────────────────
+  bot.action(/^driver_order:(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const orderId = ctx.match[1];
+    try {
+      const order = await Order.findById(orderId).populate('assignedDriver', 'name phone');
+      if (!order) return ctx.reply('❌ Buyurtma topilmadi.');
+
+      // Verify this driver owns the order
+      const driverUser = await User.findOne({ telegramId: String(ctx.tgUser.telegramId), role: 'driver' });
+      const isOwner = (
+        (driverUser && String(order.assignedDriver?._id) === String(driverUser._id)) ||
+        String(order.driverTelegramId) === String(ctx.tgUser.telegramId)
+      );
+      if (!isOwner) return ctx.reply('⚠️ Sizga bu buyurtma tegishli emas.');
+
+      const items = await OrderItem.find({ order: order._id });
+      const esc = (s) => String(s || '').replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
+
+      const itemLines = items.map(i => `• ${esc(i.name)} × ${i.quantity} = ${fmt(i.price * i.quantity)} so'm`).join('\n');
+
+      const mapLink = (order.latitude && order.longitude)
+        ? `https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}`
+        : null;
+
+      const distLine = order.distance !== null && order.distance !== undefined
+        ? `🛣️ *${order.distance} km* ~${order.duration || '—'}\n` : '';
+      const feeLine = order.deliveryFee > 0 && !order.isFreeDelivery
+        ? `💵 Yetkazib berish: *${fmt(order.deliveryFee)} so'm*\n` : '';
+      const freeLine = order.isFreeDelivery
+        ? `💵 Yetkazib berish: *Bepul*\n` : '';
+
+      const text =
+        `📋 *Buyurtma #${String(order._id).slice(-6)}*\n\n` +
+        `👤 *${esc(order.customerName) || '—'}*\n` +
+        `📱 ${esc(order.customerPhone) || '—'}\n` +
+        `📍 ${esc(order.address) || '—'}${order.district ? ' (' + esc(order.district) + ')' : ''}\n` +
+        `${distLine}${feeLine}${freeLine}` +
+        `💰 *Jami: ${fmt(order.totalPrice)} so'm*\n\n` +
+        `*Mahsulotlar:*\n${itemLines}\n\n` +
+        `🏷 Holat: ${order.deliveryStatus === 'in_transit' ? '🚚 Yo\'lda' : (order.deliveryStatus === 'assigned' ? '📦 Tayinlangan' : '⏳ Kutilmoqda')}`;
+
+      const actionButtons = [];
+      if (order.deliveryStatus === 'assigned' || order.deliveryStatus === 'pending') {
+        actionButtons.push(Markup.button.callback('🚚 Yetkazishni boshlash', `start_delivery:${orderId}`));
+      }
+      if (order.deliveryStatus === 'in_transit') {
+        actionButtons.push(Markup.button.callback('✅ Yetkazildi', `mark_delivered:${orderId}`));
+      }
+
+      const rows = [];
+      if (actionButtons.length) rows.push(actionButtons);
+      if (mapLink) rows.push([Markup.button.url('🗺 Marshrutni ochish', mapLink)]);
+      rows.push([Markup.button.callback('◀️ Orqaga', 'driver_back_to_orders')]);
+
+      await ctx.editMessageText(text, {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(rows),
+        disable_web_page_preview: true,
+      });
+    } catch (err) {
+      logger.error('driver_order error', { error: err.message, orderId });
+      ctx.reply('❌ Xatolik yuz berdi.');
+    }
+  });
+
+  bot.action('driver_back_to_orders', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText('↩️ *Buyurtmalar ro\'yxatiga qaytish*\n\nAsosiy menyudan "🚚 Mening buyurtmalarim" ni tanlang.', { parse_mode: 'Markdown' });
   });
 
   // ── TEXT HANDLER (multi-state) ────────────────────────────────────────────
@@ -1200,22 +1518,25 @@ function createBot() {
     }
 
     if (input === '👤 Mening profilim') {
-      const u = ctx.tgUser;
-      const prem = u && u.isPremium && u.premiumExpiresAt && new Date() < u.premiumExpiresAt;
-      const premLine = prem
-        ? '👑 Status: *Premium*\n📅 ' + u.premiumExpiresAt.toLocaleDateString('ru-RU', { timeZone: 'Asia/Tashkent' }) + ' gacha'
-        : '👤 Status: Oddiy foydalanuvchi';
-      const phone = u && u.phone ? u.phone.replace(/(\d{3})\d{5}(\d{2})/, '$1*****$2') : '—';
-      const orderCount = await Order.countDocuments({ telegramId: String(ctx.from.id), status: { $ne: 'cancelled' } }).catch(() => 0);
-      await ctx.reply(
-        '👤 *Mening profilim*\n\n' +
-        '📛 Ism: *' + (ctx.from.first_name || '—') + '*\n' +
-        '📱 Telefon: ' + phone + '\n' +
-        '🆔 Telegram ID: `' + ctx.from.id + '`\n\n' +
-        premLine + '\n\n' +
-        '📦 Jami zakazlar: *' + orderCount + '* ta',
-        { parse_mode: 'Markdown' }
-      );
+      try {
+        const u = ctx.tgUser;
+        const prem = u && u.isPremium && u.premiumExpiresAt && new Date() < u.premiumExpiresAt;
+        const premLine = prem
+          ? '👑 Status: *Premium*\n📅 ' + u.premiumExpiresAt.toLocaleDateString('ru-RU', { timeZone: 'Asia/Tashkent' }) + ' gacha'
+          : '👤 Status: Oddiy foydalanuvchi';
+        const phone = u && u.phone ? u.phone.replace(/(\d{3})\d{5}(\d{2})/, '$1*****$2') : '—';
+        const orderCount = await Order.countDocuments({ telegramId: String(ctx.from.id), status: { $ne: 'cancelled' } }).catch(() => 0);
+        const esc = (s) => String(s || '').replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
+        await ctx.reply(
+          '👤 *Mening profilim*\n\n' +
+          '📛 Ism: *' + esc(ctx.from.first_name || '—') + '*\n' +
+          '📱 Telefon: ' + esc(phone) + '\n' +
+          '🆔 Telegram ID: `' + ctx.from.id + '`\n\n' +
+          premLine + '\n\n' +
+          '📦 Jami zakazlar: *' + orderCount + '* ta',
+          { parse_mode: 'Markdown' }
+        );
+      } catch (e) { logger.error('profile error', { error: e.message }); ctx.reply('❌ Xatolik yuz berdi.'); }
       return;
     }
 
@@ -1249,12 +1570,12 @@ function createBot() {
         '1️⃣ Qanday zakaz beraman?\n→ "🛒 Do\'konga o\'tish" tugmasini bosing\n\n' +
         '2️⃣ Zakazimni qanday kuzataman?\n→ "📜 Zakazlar tarixi" bo\'limida\n\n' +
         '3️⃣ Premium qanday olaman?\n→ "👑 Premium" bo\'limida\n\n' +
-        '💬 Boshqa savol bo\'lsa:',
+        '💬 Boshqa savol bo\'lsa: 📞 +998 90 123-45-67',
         {
           parse_mode: 'Markdown',
           ...Markup.inlineKeyboard([
-            [Markup.button.url('📞 Qo\'ng\'iroq qilish', 'tel:+998901234567')],
             [Markup.button.url('📧 Email yuborish', 'mailto:info@meatzone.uz')],
+            [Markup.button.url('🛒 Do\'konni ochish', SITE + '/catalog')],
           ])
         }
       );
@@ -1426,7 +1747,7 @@ function createBot() {
       }
     }
 
-    // broadcast text input
+    // broadcast text input (command /broadcast)
     if (s && s.action === 'BROADCAST_INPUT') {
       await botState.setState(String(ctx.from.id), { action: 'BROADCAST_CONFIRM', text: input, filter: s.filter || 'all' }, 300);
       await ctx.reply(`📢 *Предпросмотр рассылки:*\n\n${input}\n\n_Фильтр: ${s.filter || 'all'}_\n\nОтправить?`, {
@@ -1439,24 +1760,49 @@ function createBot() {
       return;
     }
 
+    // broadcast text input (admin menu button)
+    if (s && s.action === 'BROADCAST' && s.step === 'text') {
+      await botState.setState(ctx.from.id, { action: 'BROADCAST', step: 'confirm', text: input }, 300);
+      await ctx.reply(
+        `📢 *Xabar yuborish*\n\n${input}\n\n_Barcha foydalanuvchilarga yuboriladi._\n\nYuborilsinmi?`,
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('✅ Ha, yuborish', 'broadcast_go')],
+            [Markup.button.callback('❌ Bekor qilish', 'broadcast_cancel')],
+          ]),
+        }
+      );
+      return;
+    }
+
     // ── DRIVER MENU BUTTONS ───────────────────────────────────────────────
     if (input === '🚚 Mening buyurtmalarim') {
       const role = ctx.tgUser?.role;
       if (role !== 'driver') return ctx.reply('⚠️ Bu bo\'lim faqat kurerlarga mo\'ljallangan.');
       try {
-        const assigned = await Order.find({ assignedDriver: ctx.tgUser._id, status: { $in: ['confirmed', 'in_delivery'] } })
-          .sort({ createdAt: -1 }).limit(10);
+        const driverUser = await User.findOne({ telegramId: String(ctx.tgUser.telegramId), role: 'driver' });
+        const orConditions = [
+          { driverTelegramId: String(ctx.tgUser.telegramId) },
+        ];
+        if (driverUser) {
+          orConditions.push({ assignedDriver: driverUser._id });
+        }
+        const assigned = await Order.find({
+          $or: orConditions,
+          status: { $nin: ['completed', 'delivered', 'cancelled'] },
+        }).sort({ createdAt: -1 }).limit(10);
         if (!assigned.length) {
           return ctx.reply('📭 Hozirda sizga tayinlangan faol buyurtma yo\'q.');
         }
-        const lines = assigned.map((o, i) => {
-          const statusEmoji = o.status === 'in_delivery' ? '🚚' : '✅';
+        const buttons = assigned.map((o) => {
+          const statusEmoji = o.deliveryStatus === 'in_transit' ? '🚚' : (o.deliveryStatus === 'assigned' ? '📦' : '⏳');
           const d = o.createdAt.toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' });
-          return `${i + 1}. ${statusEmoji} \`${String(o._id).slice(-6)}\` | ${d}\n   📍 ${o.address || '—'}\n   💰 ${fmt(o.totalPrice)} so'm`;
+          return [Markup.button.callback(`${statusEmoji} #${String(o._id).slice(-6)} | ${d} — ${fmt(o.totalPrice)} so'm`, `driver_order:${o._id}`)];
         });
         await ctx.reply(
-          '🚚 *Mening faol buyurtmalarim*\n\n' + lines.join('\n\n'),
-          { parse_mode: 'Markdown' }
+          '🚚 *Mening faol buyurtmalarim*\n\nBatafsil ma\'lumot uchun buyurtmani tanlang:',
+          { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) }
         );
       } catch (e) { ctx.reply('Xatolik: ' + e.message); }
       return;
@@ -1466,8 +1812,17 @@ function createBot() {
       const role = ctx.tgUser?.role;
       if (role !== 'driver') return ctx.reply('⚠️ Bu bo\'lim faqat kurerlarga mo\'ljallangan.');
       try {
-        const delivered = await Order.find({ assignedDriver: ctx.tgUser._id, status: 'completed' })
-          .sort({ createdAt: -1 }).limit(10);
+        const driverUser = await User.findOne({ telegramId: String(ctx.tgUser.telegramId), role: 'driver' });
+        const orConditions = [
+          { driverTelegramId: String(ctx.tgUser.telegramId) },
+        ];
+        if (driverUser) {
+          orConditions.push({ assignedDriver: driverUser._id });
+        }
+        const delivered = await Order.find({
+          $or: orConditions,
+          status: 'completed',
+        }).sort({ createdAt: -1 }).limit(10);
         if (!delivered.length) {
           return ctx.reply('📭 Hali yetkazilgan buyurtma yo\'q.');
         }
@@ -1488,12 +1843,13 @@ function createBot() {
       const role = u?.role || 'customer';
       const roleNames = { customer: 'Mijoz', driver: 'Kurer 🚚', operator: 'Operator', manager: 'Menejer', admin: 'Admin' };
       const phone = u && u.phone ? u.phone : '—';
+      const esc = (s) => String(s || '').replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
       await ctx.reply(
         '👤 *Mening profilim*\n\n' +
-        '📛 Ism: *' + (ctx.from.first_name || '—') + '*\n' +
-        '📱 Telefon: ' + phone + '\n' +
-        '🆔 Telegram: @' + (ctx.from.username || ctx.from.id) + '\n' +
-        '🏷 Rol: *' + (roleNames[role] || role) + '*',
+        '📛 Ism: *' + esc(ctx.from.first_name || '—') + '*\n' +
+        '📱 Telefon: ' + esc(phone) + '\n' +
+        '🆔 Telegram: @' + esc(ctx.from.username || String(ctx.from.id)) + '\n' +
+        '🏷 Rol: *' + esc(roleNames[role] || role) + '*',
         { parse_mode: 'Markdown' }
       );
       return;
@@ -1505,12 +1861,54 @@ function createBot() {
       try {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const count = await Order.countDocuments({ assignedDriver: ctx.tgUser._id, status: 'completed', createdAt: { $gte: startOfMonth } });
+        const driverUser = await User.findOne({ telegramId: String(ctx.tgUser.telegramId), role: 'driver' });
+        const orConditions = [
+          { driverTelegramId: String(ctx.tgUser.telegramId) },
+        ];
+        if (driverUser) {
+          orConditions.push({ assignedDriver: driverUser._id });
+        }
+
+        const orders = await Order.find({
+          $or: orConditions,
+          status: 'completed',
+          createdAt: { $gte: startOfMonth },
+        }).sort({ createdAt: -1 }).limit(20).lean();
+
+        const count = orders.length;
+        const totalDelivery = orders.reduce((s, o) => s + (o.deliveryFee || 0), 0);
+        const totalOrders = orders.reduce((s, o) => s + (o.totalPrice || 0), 0);
+        const avgDelivery = count > 0 ? Math.round(totalDelivery / count) : 0;
+
+        const lines = orders.slice(0, 10).map((o, i) => {
+          const d = o.createdAt.toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' });
+          return `${i + 1}. \`${String(o._id).slice(-6)}\` | ${d}\n   💰 ${fmt(o.totalPrice)} so'm${o.deliveryFee > 0 ? ' | 🚚 ' + fmt(o.deliveryFee) + ' so\'m' : ''}`;
+        }).join('\n');
+
+        // Calculate cash to hand over (COD orders with cash collected but not handed over)
+        const cashOrders = await Order.find({
+          $or: orConditions,
+          status: 'completed',
+          paymentMethod: 'cash',
+          cashCollected: true,
+          cashHandedOver: false,
+        }).lean();
+        const cashToHandOver = cashOrders.reduce((s, o) => s + (o.totalPrice || 0), 0);
+
+        const buttons = [];
+        if (cashToHandOver > 0) {
+          buttons.push([Markup.button.callback(`✅ Pulni topshirish (${fmt(cashToHandOver)} so'm)`, 'submit_cash_handover')]);
+        }
+
         await ctx.reply(
           '💰 *Daromadim*\n\n' +
-          '📅 Bu oy yetkazilgan: *' + count + '* ta buyurtma\n\n' +
-          '_Batafsil hisobot tez orada qo\'shiladi._',
-          { parse_mode: 'Markdown' }
+          '📅 *Bu oy yetkazilgan:* ' + count + ' ta buyurtma\n' +
+          '🚚 *Yetkazib berishdan jami:* ' + fmt(totalDelivery) + ' so\'m\n' +
+          '💵 *Buyurtmalar jami:* ' + fmt(totalOrders) + ' so\'m\n' +
+          '📊 *O\'rtacha yetkazish:* ' + fmt(avgDelivery) + ' so\'m\n\n' +
+          (cashToHandOver > 0 ? `💵 *Topshirish kerak:* ${fmt(cashToHandOver)} so'm (${cashOrders.length} ta buyurtma)\n\n` : '') +
+          (lines ? '*Oxirgi buyurtmalar:*\n' + lines : ''),
+          { parse_mode: 'Markdown', ...(buttons.length > 0 ? Markup.inlineKeyboard(buttons) : {}) }
         );
       } catch (e) { ctx.reply('Xatolik: ' + e.message); }
       return;
@@ -1560,6 +1958,50 @@ function createBot() {
           { parse_mode: 'Markdown' }
         );
       } catch (e) { ctx.reply('Xatolik: ' + e.message); }
+      return;
+    }
+
+    // ── ADMIN MENU BUTTONS ────────────────────────────────────────────────
+    if (input === '📋 Buyurtmalar') {
+      if (!await canManage(ctx.from.id)) return ctx.reply('⚠️ Ruxsat yo\'q.');
+      try {
+        const orders = await Order.find().sort({ createdAt: -1 }).limit(10);
+        if (!orders.length) return ctx.reply('📭 Buyurtmalar yo\'q.');
+        const rows = orders.map((o) => [
+          Markup.button.callback(
+            `${STATUS_EMOJIS[o.status] || '⚪'} #${String(o._id).slice(-6)} | ${fmt(o.totalPrice)} so'm`,
+            `adm_order_${o._id}`
+          ),
+        ]);
+        rows.push([Markup.button.callback('◀️ Orqaga', 'adm_back')]);
+        await ctx.reply('📋 *Buyurtmalar* (oxirgi 10 ta)', { parse_mode: 'Markdown', ...Markup.inlineKeyboard(rows) });
+      } catch (e) { ctx.reply('Xatolik: ' + e.message); }
+      return;
+    }
+
+    if (input === '👤 Foydalanuvchilar') {
+      if (!await canManage(ctx.from.id)) return ctx.reply('⚠️ Ruxsat yo\'q.');
+      try {
+        const users = await TelegramUser.find().sort({ createdAt: -1 }).limit(20);
+        const rows = users.map((u) => [
+          Markup.button.callback(
+            `${u.firstName || '—'} (@${u.username || u.telegramId}) — ${u.role || 'customer'}`,
+            `adm_user_view_${u.telegramId}`
+          ),
+        ]);
+        rows.push([Markup.button.callback('◀️ Orqaga', 'adm_back')]);
+        await ctx.reply('👤 *Foydalanuvchilar* (oxirgi 20 ta)', { parse_mode: 'Markdown', ...Markup.inlineKeyboard(rows) });
+      } catch (e) { ctx.reply('Xatolik: ' + e.message); }
+      return;
+    }
+
+    if (input === '📢 Xabar yuborish') {
+      if (!await canManage(ctx.from.id)) return ctx.reply('⚠️ Ruxsat yo\'q.');
+      await botState.setState(ctx.from.id, { action: 'BROADCAST', step: 'text' }, 300);
+      await ctx.reply(
+        '📢 *Xabar yuborish*\n\nXabar matnini kiriting:\n\n_Eslatma: barcha foydalanuvchilarga yuboriladi._',
+        { parse_mode: 'Markdown' }
+      );
       return;
     }
 
@@ -1725,10 +2167,10 @@ function createBot() {
   // ── ADMIN PANEL ───────────────────────────────────────────────────────────
 
   const admMenu = () => Markup.inlineKeyboard([
+    [Markup.button.callback('📋 Заказы', 'adm_orders'), Markup.button.callback('📊 Статистика', 'adm_stats_panel')],
     [Markup.button.callback('📦 Товары', 'adm_products'), Markup.button.callback('📂 Категории', 'adm_cats')],
     [Markup.button.callback('🏷 Промокоды', 'adm_promos'), Markup.button.callback('🖼 Баннеры', 'adm_banners')],
     [Markup.button.callback('👥 Пользователи', 'adm_users'), Markup.button.callback('🚚 Доставка', 'adm_delivery')],
-    [Markup.button.callback('📊 Статистика', 'adm_stats_panel')],
   ]);
 
   bot.command('admin', async (ctx) => {
@@ -2036,22 +2478,157 @@ function createBot() {
     if (!await canManage(ctx.from.id)) return ctx.answerCbQuery('❌');
     const telegramId = ctx.match[1];
     const newRole = ctx.match[2];
+    const allowed = ['customer', 'driver', 'operator', 'manager', 'admin'];
+    if (!allowed.includes(newRole)) return ctx.answerCbQuery('❌ Недопустимая роль');
+
+    const oldUser = await TelegramUser.findOne({ telegramId });
+    if (!oldUser) return ctx.answerCbQuery('Не найдено');
+    const oldRole = oldUser.role;
+
     const u = await TelegramUser.findOneAndUpdate({ telegramId }, { role: newRole }, { new: true });
-    if (!u) return ctx.answerCbQuery('Не найдено');
+
+    // Sync Redis bot:admins for immediate bot access
+    try {
+      if (newRole === 'admin' && oldRole !== 'admin') {
+        await redis.sadd('bot:admins', telegramId);
+      } else if (oldRole === 'admin' && newRole !== 'admin') {
+        await redis.srem('bot:admins', telegramId);
+      }
+    } catch (e) { console.error('[bot:admins] Redis sync error:', e.message); }
+
     await ctx.answerCbQuery(`✅ Роль: ${newRole}`);
     await notifications.notifyRoleChanged(telegramId, newRole, u.languageCode || 'ru').catch(() => { });
+
     // Notify admin group
     const gid = process.env.TELEGRAM_ADMIN_GROUP;
     if (gid) {
       await bot.telegram.sendMessage(gid,
-        `👤 *Роль изменена*\n\n🆔 \`${telegramId}\`\n👤 ${u.firstName || '—'}\n🏷 Новая роль: *${newRole}*\n🔧 Изменено: @${ctx.from.username || ctx.from.id}`,
+        `👤 *Роль изменена*\n\n🆔 \`${telegramId}\`\n👤 ${u.firstName || '—'}\n🏷 Старая: \`${oldRole}\` → *${newRole}*\n🔧 Изменено: @${ctx.from.username || ctx.from.id}`,
         { parse_mode: 'Markdown' }
       ).catch(() => { });
     }
-    await ctx.editMessageText(`✅ Роль \`${telegramId}\` изменена на *${newRole}*.`, {
-      parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([[Markup.button.callback('◀️ К пользователям', 'adm_users')]])
-    });
+
+    const roleEmojis = { customer: '👤', driver: '🚚', operator: '⚙️', manager: '📊', admin: '🛡️' };
+    await ctx.editMessageText(
+      `✅ *Роль назначена*\n\n🆔 \`${telegramId}\`\n👤 ${u.firstName || '—'}\n🏷 ${roleEmojis[oldRole] || '👤'} \`${oldRole}\` → ${roleEmojis[newRole] || '👤'} *${newRole}*\n\nПользователь ${newRole === 'admin' ? 'теперь может открывать /admin' : 'обновлён'}.`,
+      { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('◀️ К пользователям', 'adm_users')]]) }
+    );
+  });
+
+  // ── ORDERS MANAGEMENT ────────────────────────────────────────────────────
+
+  const STATUS_EMOJIS = { new: '🔵', processing: '🟡', confirmed: '🟣', completed: '🟢', cancelled: '🔴' };
+
+  bot.action('adm_orders', async (ctx) => {
+    if (!await canManage(ctx.from.id)) return ctx.answerCbQuery('❌');
+    await ctx.answerCbQuery('📋 Загружаю...');
+    try {
+      const orders = await Order.find({ status: { $in: ['new', 'processing', 'confirmed'] } })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+      if (!orders.length) {
+        await ctx.editMessageText(
+          '📋 *Заказы*\n\nНет активных заказов (new/processing/confirmed).',
+          { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('◀️ Назад', 'adm_back')]]) }
+        );
+        return;
+      }
+      const rows = [];
+      for (const o of orders) {
+        const items = await OrderItem.find({ order: o._id }).select('name quantity').lean();
+        const itemsTxt = items.map(i => `• ${i.name}×${i.quantity}`).join(', ');
+        const emoji = STATUS_EMOJIS[o.status] || '⚪';
+        rows.push([Markup.button.callback(
+          `${emoji} #${o._id.toString().slice(-6)} — ${fmt(o.totalPrice)} сум`,
+          `adm_order_${o._id}`
+        )]);
+        rows.push([Markup.button.callback(
+          `   ${itemsTxt.slice(0, 40)}${itemsTxt.length > 40 ? '…' : ''}`,
+          `adm_order_${o._id}`
+        )]);
+      }
+      rows.push([Markup.button.callback('◀️ Назад', 'adm_back')]);
+      await ctx.editMessageText(
+        `📋 *Активные заказы* (${orders.length})\n\nВыберите заказ для управления:`,
+        { parse_mode: 'Markdown', ...Markup.inlineKeyboard(rows) }
+      );
+    } catch (e) {
+      await ctx.editMessageText('Ошибка: ' + e.message, {
+        ...Markup.inlineKeyboard([[Markup.button.callback('◀️ Назад', 'adm_back')]])
+      });
+    }
+  });
+
+  bot.action(/^adm_order_(?!status)(.+)$/, async (ctx) => {
+    if (!await canManage(ctx.from.id)) return ctx.answerCbQuery('❌');
+    await ctx.answerCbQuery();
+    try {
+      const orderId = ctx.match[1];
+      const order = await Order.findById(orderId).lean();
+      if (!order) return ctx.reply('❌ Заказ не найден.');
+      const items = await OrderItem.find({ order: order._id }).lean();
+      const itemsTxt = items.map(i => `• ${i.name} × ${i.quantity} = ${fmt(i.price * i.quantity)} сум`).join('\n');
+      const status = order.status || 'new';
+      const emoji = STATUS_EMOJIS[status] || '⚪';
+      const statusLabels = { new: 'Новый', processing: 'В обработке', confirmed: 'Подтверждён', completed: 'Выполнен', cancelled: 'Отменён' };
+      const date = order.createdAt ? new Date(order.createdAt).toLocaleString('ru-RU') : '—';
+
+      const actions = [];
+      if (status === 'new') {
+        actions.push([Markup.button.callback('✅ Подтвердить', `adm_order_status_${orderId}_confirmed`)]);
+        actions.push([Markup.button.callback('🟡 В обработку', `adm_order_status_${orderId}_processing`)]);
+      } else if (status === 'processing') {
+        actions.push([Markup.button.callback('✅ Подтвердить', `adm_order_status_${orderId}_confirmed`)]);
+      } else if (status === 'confirmed') {
+        actions.push([Markup.button.callback('🟢 Выполнен', `adm_order_status_${orderId}_completed`)]);
+      }
+      actions.push([Markup.button.callback('🔴 Отменить', `adm_order_status_${orderId}_cancelled`)]);
+      actions.push([Markup.button.callback('◀️ К заказам', 'adm_orders')]);
+
+      await ctx.editMessageText(
+        `📋 *Заказ #${orderId.slice(-6)}*\n\n` +
+        `👤 ${order.customerName || '—'}\n` +
+        `📱 ${order.customerPhone || '—'}\n` +
+        `📍 ${order.address || '—'}\n` +
+        `💰 *${fmt(order.totalPrice)} сум* (доставка ${fmt(order.deliveryFee || 0)} сум)\n` +
+        `🏷 ${emoji} ${statusLabels[status] || status}\n` +
+        `🗓 ${date}\n\n` +
+        `*Товары:*\n${itemsTxt || '—'}`,
+        { parse_mode: 'Markdown', ...Markup.inlineKeyboard(actions) }
+      );
+    } catch (e) {
+      await ctx.reply('Ошибка: ' + e.message);
+    }
+  });
+
+  bot.action(/^adm_order_status_(.+)_(.+)$/, async (ctx) => {
+    if (!await canManage(ctx.from.id)) return ctx.answerCbQuery('❌');
+    const orderId = ctx.match[1];
+    const newStatus = ctx.match[2];
+    const allowedTransitions = ['new', 'processing', 'confirmed', 'completed', 'cancelled'];
+    if (!allowedTransitions.includes(newStatus)) return ctx.answerCbQuery('❌ Недопустимый статус');
+    try {
+      const order = await Order.findByIdAndUpdate(orderId, { status: newStatus }, { new: true });
+      if (!order) return ctx.answerCbQuery('❌ Заказ не найден');
+      await ctx.answerCbQuery(`✅ Статус: ${newStatus}`);
+      // Notify customer
+      if (order.telegramId) {
+        const msgs = {
+          uz: `📋 *Buyurtma holati o'zgardi*\n\n#${orderId.slice(-6)} — *${newStatus}*\n📍 ${order.address || '—'}\n💰 ${fmt(order.totalPrice)} so'm`,
+          ru: `📋 *Статус заказа изменён*\n\n#${orderId.slice(-6)} — *${newStatus}*\n📍 ${order.address || '—'}\n💰 ${fmt(order.totalPrice)} сум`,
+        };
+        await bot.telegram.sendMessage(order.telegramId, msgs.uz, { parse_mode: 'Markdown' }).catch(() => { });
+      }
+      // Refresh order view
+      await bot.telegram.editMessageText(
+        ctx.chat.id, ctx.callbackQuery.message.message_id, null,
+        `✅ *Статус обновлён*\n\nЗаказ #${orderId.slice(-6)} теперь *${newStatus}*.`,
+        { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('📋 К заказам', 'adm_orders')]]) }
+      );
+    } catch (e) {
+      await ctx.answerCbQuery('❌ Ошибка');
+    }
   });
 
   // ── DELIVERY SETTINGS ────────────────────────────────────────────────────
@@ -2065,7 +2642,7 @@ function createBot() {
       redis.get('bot:settings:min_order'),
     ]);
     await ctx.editMessageText(
-      `🚚 *Настройки доставки*\n\n💰 Цена за км: *${pricePerKm || '—'} сум*\n🎁 Бесплатно от: *${freeThreshold || '—'} сум*\n📦 Мин. заказ: *${minOrder || '0'} сум*\n\n_Изменить мин. заказ: /settings min\\_order [сумма]_`,
+      `🚚 *Настройки доставки*\n\n💰 Цена за км: *${pricePerKm || '—'} сум*\n🎁 Бесплатно от: *${freeThreshold || '—'} сум*\n📦 Мин. заказ: *${minOrder || '0'} сум*\n\n_Изменить мин. заказ: /settings min\_order [сумма]_`,
       { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('◀️ Назад', 'adm_back')]]) }
     );
   });

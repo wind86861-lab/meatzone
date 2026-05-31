@@ -47,12 +47,4 @@ const adminOrDriver = (req, res, next) => {
   }
 };
 
-const operator = (req, res, next) => {
-  if (req.user && (req.user.role === 'operator' || req.user.role === 'admin')) {
-    next();
-  } else {
-    res.status(403).json({ message: 'Not authorized as operator' });
-  }
-};
-
-module.exports = { protect, admin, driver, adminOrDriver, operator };
+module.exports = { protect, admin, driver, adminOrDriver };

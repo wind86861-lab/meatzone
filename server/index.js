@@ -20,6 +20,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/db');
 const { logger } = require('./config/logger');
 const { redis } = require('./config/redis');
@@ -123,7 +124,13 @@ const apiLimiter = rateLimit({
   validate: { xForwardedForHeader: false },
 });
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+app.use('/uploads', express.static(uploadsDir));
 
 // API routes
 app.use('/api/auth', authLimiter, require('./routes/auth'));
@@ -137,6 +144,7 @@ app.use('/api/delivery', apiLimiter, require('./routes/delivery'));
 app.use('/api/coins', apiLimiter, require('./routes/coins'));
 app.use('/api/promos', apiLimiter, require('./routes/promos'));
 app.use('/api/banners', apiLimiter, require('./routes/banners'));
+app.use('/api/cash-handovers', apiLimiter, require('./routes/cashHandovers'));
 
 // Stage 4: Payment provider webhooks (NO rate limiting — providers need unrestricted access)
 app.use('/api/payme', require('./routes/payme'));

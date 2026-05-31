@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,12 +8,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        // MeatZone — deep charcoal + signature red + warm amber
+        // MeatZone — CSS variable-driven (light / dark)
         bg: {
-          DEFAULT: '#F5F0EC',
-          surface: '#FFFFFF',
-          surface2: '#F0EBE6',
-          surface3: '#E6E0DA',
+          DEFAULT: 'var(--bg)',
+          surface: 'var(--surface)',
+          surface2: 'var(--surface2)',
+          surface3: 'var(--surface3)',
+          surface4: 'var(--surface4)',
         },
         primary: {
           DEFAULT: '#E8251A',
@@ -41,11 +43,11 @@ export default {
           900: '#4D2208',
         },
         ink: {
-          DEFAULT: '#2A1E18',
-          dim: '#7A6558',
-          mute: '#A08E80',
-          line: 'rgba(60,40,30,.12)',
-          line2: 'rgba(60,40,30,.06)',
+          DEFAULT: 'var(--ink)',
+          dim: 'var(--ink-dim)',
+          mute: 'var(--ink-mute)',
+          line: 'var(--line)',
+          line2: 'var(--line2)',
         },
         success: '#1E7A3E',
         warning: '#F59E0B',

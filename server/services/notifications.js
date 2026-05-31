@@ -38,14 +38,6 @@ module.exports = {
         uz: { name: '🚚 Kurer', desc: 'Siz buyurtmalarni yetkazib berish uchun tayinlangan dasturga kirishingiz mumkin.' },
         ru: { name: '🚚 Курьер', desc: 'Вам открыт доступ к панели курьера для доставки заказов.' },
       },
-      operator: {
-        uz: { name: '⚙️ Operator', desc: 'Siz buyurtmalarni boshqarish paneliga kirishingiz mumkin.' },
-        ru: { name: '⚙️ Оператор', desc: 'Вам открыт доступ к панели управления заказами.' },
-      },
-      manager: {
-        uz: { name: '📊 Menejer', desc: 'Siz boshqaruv paneliga to\'liq kirishingiz mumkin.' },
-        ru: { name: '📊 Менеджер', desc: 'Вам открыт полный доступ к панели управления.' },
-      },
       admin: {
         uz: { name: '🛡 Admin', desc: 'Siz tizimning to\'liq administrator huquqlariga egasiz.' },
         ru: { name: '🛡 Администратор', desc: 'Вам предоставлены полные права администратора системы.' },
@@ -61,18 +53,44 @@ module.exports = {
 
     const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'Meatzone_uz_bot';
     const { Markup } = require('telegraf');
-    return this.sendMessage(telegramId, text, {
+
+    // Build reply keyboard for the new role so Telegram replaces the old one
+    let roleKeyboard;
+    if (newRole === 'driver') {
+      roleKeyboard = Markup.keyboard([
+        ['🚚 Mening buyurtmalarim', '📍 Yetkazish tarixi'],
+        ['👤 Profilim', '💰 Daromadim'],
+      ]).resize();
+    } else if (newRole === 'admin') {
+      roleKeyboard = Markup.keyboard([
+        ['📋 Buyurtmalar', '📊 Statistika'],
+        ['👤 Foydalanuvchilar', '📢 Xabar yuborish'],
+        ['📞 Yordam'],
+      ]).resize();
+    } else {
+      roleKeyboard = Markup.keyboard([
+        ['🏢 Kompaniya haqida', '📜 Zakazlar tarixi'],
+        ['👤 Mening profilim', '🌐 Tilni tanlash'],
+        ['🛒 Do\'konga o\'tish', '📞 Yordam'],
+      ]).resize();
+    }
+
+    return module.exports.sendMessage(telegramId, text, {
       ...Markup.inlineKeyboard([
         [Markup.button.url('🤖 Botni ochish', `https://t.me/${botUsername}`)],
       ]),
+      ...roleKeyboard,
     });
   },
 
   /**
    * Broadcast a new order to ALL available drivers.
    * Returns array of { telegramId, messageId } for tracking.
+   * @param {Object} order - Order document
+   * @param {Array} items - Order items
+   * @param {Object} storeLocation - { lat, lng } of the shop
    */
-  async notifyDriversOfNewOrder(order, items) {
+  async notifyDriversOfNewOrder(order, items, storeLocation = null) {
     if (!botInstance) return [];
     try {
       const drivers = await TelegramUser.find({ role: 'driver', isActive: true });
@@ -88,13 +106,28 @@ module.exports = {
         `${i + 1}. ${esc(it.name)} — ${it.quantity} x ${Number(it.price || 0).toLocaleString('ru-RU')} so'm = ${Number((it.price || 0) * (it.quantity || 1)).toLocaleString('ru-RU')} so'm`
       ).join('\n');
 
+      // Build route info section
+      const distLine = order.distance !== null && order.distance !== undefined
+        ? `🛣️ *${order.distance} km* ~${order.duration || '—'}\n` : '';
+      const feeLine = order.deliveryFee > 0 && !order.isFreeDelivery
+        ? `💵 Yetkazib berish: *${Number(order.deliveryFee).toLocaleString('ru-RU')} so'm*\n` : '';
+      const freeLine = order.isFreeDelivery
+        ? `💵 Yetkazib berish: *Bepul*\n` : '';
+
+      // Google Maps directions link
+      const mapsLink = (storeLocation && order.latitude && order.longitude)
+        ? `https://www.google.com/maps/dir/${storeLocation.lat},${storeLocation.lng}/${order.latitude},${order.longitude}`
+        : null;
+
       const text =
         `🚚 *Yangi yetkazib berish buyurtmasi!*\n\n` +
-        `👤 ${esc(order.customerName)}\n` +
+        `👤 *${esc(order.customerName)}*\n` +
         `📱 ${esc(order.customerPhone)}\n` +
         `📍 ${esc(order.address)}${order.district ? ' (' + esc(order.district) + ')' : ''}\n` +
-        `💰 *${Number(order.totalPrice || 0).toLocaleString('ru-RU')} so'm*\n\n` +
+        `${distLine}${feeLine}${freeLine}` +
+        `💰 *Jami: ${Number(order.totalPrice || 0).toLocaleString('ru-RU')} so'm*\n\n` +
         `*Mahsulotlar:*\n${itemLines || '—'}\n\n` +
+        (mapsLink ? `🗺 [Marshrutni ko'rish](${mapsLink})\n\n` : '') +
         `⏱ Buyurtma olinganidan keyin yetkazib berishni boshlang!`;
 
       const { Markup } = require('telegraf');
@@ -110,6 +143,7 @@ module.exports = {
               ...Markup.inlineKeyboard([
                 [Markup.button.callback('✅ Qabul qilish', `accept_order:${order._id}`)],
               ]),
+              disable_web_page_preview: true,
             }
           );
           sent.push({ telegramId: d.telegramId, messageId: msg.message_id });

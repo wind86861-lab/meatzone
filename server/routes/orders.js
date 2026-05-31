@@ -6,13 +6,39 @@ const OrderItem = require('../models/OrderItem');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const TelegramUser = require('../models/TelegramUser');
-const { protect, admin, driver, adminOrDriver, operator } = require('../middleware/auth');
+const { protect, admin, driver, adminOrDriver } = require('../middleware/auth');
 const { getDeliverySettings, haversine, getRoadDistance } = require('./delivery');
 const Coin = require('../models/Coin');
 const Promo = require('../models/Promo');
 const { botState } = require('../config/redis');
 const { sendTelegramMessage, formatOrderMessage } = require('../utils/telegram');
+const { sendMessage: notifyTelegramUser } = require('../services/notifications');
 const { getPaymeLink, getClickLink } = require('../utils/paymentLinks');
+
+// Helper: notify customer on Telegram about order status change
+async function notifyCustomerStatusChange(order, newStatus) {
+  if (!order.telegramId) return;
+
+  const statusLabels = {
+    new: { uz: 'Yangi', ru: 'Новый', icon: '🆕' },
+    processing: { uz: 'Tayyorlanmoqda', ru: 'В обработке', icon: '⚙️' },
+    confirmed: { uz: 'Tasdiqlangan', ru: 'Подтверждён', icon: '✅' },
+    completed: { uz: 'Yetkazildi', ru: 'Доставлен', icon: '🚚' },
+    delivered: { uz: 'Yetkazildi', ru: 'Доставлен', icon: '🚚' },
+    cancelled: { uz: 'Bekor qilindi', ru: 'Отменён', icon: '❌' },
+  };
+
+  const s = statusLabels[newStatus] || statusLabels.new;
+  const lang = order.languageCode || 'uz';
+  const label = s[lang] || s.uz;
+
+  const messages = {
+    uz: `${s.icon} *Buyurtma holati o'zgardi*\n\n🆔 \`${order._id}\`\n📌 Holat: *${label}*\n💰 Jami: *${(order.totalPrice || 0).toLocaleString('ru-RU')} so'm*`,
+    ru: `${s.icon} *Статус заказа изменён*\n\n🆔 \`${order._id}\`\n📌 Статус: *${label}*\n💰 Итого: *${(order.totalPrice || 0).toLocaleString('ru-RU')} сум*`,
+  };
+
+  await notifyTelegramUser(order.telegramId, messages[lang] || messages.uz).catch(() => { });
+}
 const PaymentAttempt = require('../models/PaymentAttempt');
 
 const submitLimiter = rateLimit({
@@ -89,6 +115,8 @@ router.post('/create', submitLimiter, async (req, res) => {
     let deliveryFee = 0;
     let isFreeDelivery = false;
     let deliveryDistance = null;
+    let deliveryDuration = null;
+    let deliveryGeometry = null;
 
     if (!cfg.enabled) {
       isFreeDelivery = true;
@@ -97,8 +125,10 @@ router.post('/create', submitLimiter, async (req, res) => {
     } else if (subTotal >= cfg.freeThreshold) {
       isFreeDelivery = true;
     } else if (latitude && longitude) {
-      const { distance } = await getRoadDistance(cfg.storeLat, cfg.storeLng, Number(latitude), Number(longitude));
-      deliveryDistance = distance;
+      const roadResult = await getRoadDistance(cfg.storeLat, cfg.storeLng, Number(latitude), Number(longitude));
+      deliveryDistance = roadResult.distance;
+      deliveryDuration = roadResult.duration || null;
+      deliveryGeometry = roadResult.geometry || null;
       deliveryFee = Math.max(cfg.minFee, Math.round(deliveryDistance * cfg.pricePerKm / 500) * 500);
     } else {
       deliveryFee = cfg.minFee;
@@ -151,11 +181,14 @@ router.post('/create', submitLimiter, async (req, res) => {
       deliveryFee,
       isFreeDelivery,
       totalPrice,
+      distance: deliveryDistance !== null ? Math.round(deliveryDistance * 10) / 10 : null,
+      duration: deliveryDuration,
+      routeGeometry: deliveryGeometry,
       paymentMethod: paymentMethod || 'cash',
       promoCode: appliedPromo ? appliedPromo.code : '',
       promoDiscount,
       coinDiscount,
-      status: 'processing',
+      status: 'new',
       paymentStatus: 'pending',
     });
 
@@ -183,7 +216,8 @@ router.post('/create', submitLimiter, async (req, res) => {
     const OrderItemModel = require('../models/OrderItem');
     const savedItems = await OrderItemModel.find({ order: order._id }).lean();
     const { notifyDriversOfNewOrder } = require('../services/notifications');
-    const sent = await notifyDriversOfNewOrder(order, savedItems);
+    const storeLocation = { lat: cfg.storeLat, lng: cfg.storeLng };
+    const sent = await notifyDriversOfNewOrder(order, savedItems, storeLocation);
     if (sent.length) {
       const { redis } = require('../config/redis');
       await redis.setex(`order:${order._id}:driver_notif`, 3600, JSON.stringify(sent));
@@ -212,6 +246,15 @@ router.post('/create', submitLimiter, async (req, res) => {
     sendTelegramMessage(formatOrderMessage(order)).catch((err) => {
       console.error('Telegram notification error:', err.message);
     });
+
+    // Notify customer on Telegram about new order
+    if (order.telegramId) {
+      const welcomeMsg = order.languageCode === 'ru'
+        ? `🛒 *Новый заказ создан!*\n\n🆔 \`${order._id}\`\n Итого: *${totalPrice.toLocaleString('ru-RU')} сум*\n\n_Мы сообщим, когда статус изменится._`
+        : `🛒 *Yangi buyurtma yaratildi!*\n\n🆔 \`${order._id}\`\n💰 Jami: *${totalPrice.toLocaleString('ru-RU')} so'm*\n\n_Holat o'zgarganda xabar beramiz._`;
+      notifyTelegramUser(order.telegramId, welcomeMsg).catch(() => { });
+    }
+
   } catch (error) {
     console.error('Order creation error:', error);
     res.status(500).json({ message: error.message });
@@ -369,6 +412,7 @@ router.post('/:id/confirm', protect, admin, async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    const oldStatus = order.status;
     order.status = 'confirmed';
     order.confirmedAt = new Date();
     order.confirmedBy = req.user._id;
@@ -388,7 +432,10 @@ router.post('/:id/confirm', protect, admin, async (req, res) => {
       const { notifyDriversOfNewOrder } = require('../services/notifications');
       const OrderItem = require('../models/OrderItem');
       const items = await OrderItem.find({ order: order._id }).lean();
-      const sent = await notifyDriversOfNewOrder(order, items);
+      const { getDeliverySettings } = require('../routes/delivery');
+      const cfg2 = await getDeliverySettings();
+      const storeLocation = { lat: cfg2.storeLat, lng: cfg2.storeLng };
+      const sent = await notifyDriversOfNewOrder(order, items, storeLocation);
       if (sent.length) {
         const { redis } = require('../config/redis');
         await redis.setex(`order:${order._id}:driver_notif`, 3600, JSON.stringify(sent));
@@ -769,7 +816,9 @@ router.post('/:id/assign-driver', protect, adminOrDriver, async (req, res) => {
       return res.status(403).json({ message: 'You can only assign to yourself' });
     }
 
+    const targetUser = await User.findById(targetDriverId);
     order.assignedDriver = targetDriverId;
+    order.driverTelegramId = targetUser?.telegramId || null;
     order.deliveryStatus = 'assigned';
     await order.save();
 
@@ -808,6 +857,9 @@ router.post('/:id/delivery-status', protect, driver, async (req, res) => {
     order.deliveryStatus = status;
     if (status === 'delivered') {
       order.status = 'completed';
+
+      // Notify customer
+      notifyCustomerStatusChange(order, 'delivered');
 
       // Award coins to customer
       if (order.user) {
@@ -942,11 +994,11 @@ router.post('/driver/submit-cash', protect, driver, async (req, res) => {
     try {
       const { getBot } = require('../services/notifications');
       const bot = getBot();
-      const adminUsers = await TelegramUser.find({ role: { $in: ['admin', 'manager'] }, isActive: true }).select('telegramId');
+      const adminUsers = await TelegramUser.find({ role: 'admin', isActive: true }).select('telegramId');
       const driverName = req.user.name || req.user.firstName || 'Haydovchi';
       const msg = `💵 <b>Naqd pul topshirildi</b>\n\nHaydovchi: ${driverName}\nSumma: <b>${total.toLocaleString()} so'm</b>\nBuyurtmalar: ${pendingOrders.length} ta\nBatch: <code>${batchId}</code>`;
       for (const admin of adminUsers) {
-        bot?.telegram?.sendMessage(admin.telegramId, msg, { parse_mode: 'HTML' }).catch(() => {});
+        bot?.telegram?.sendMessage(admin.telegramId, msg, { parse_mode: 'HTML' }).catch(() => { });
       }
     } catch (e) { /* non-fatal */ }
 
@@ -1040,136 +1092,4 @@ router.get('/admin/cash-summary', protect, admin, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
-// =====================================================
-// OPERATOR ENDPOINTS
-// =====================================================
-
-/**
- * GET /api/orders/operator/feed
- * Operator — get new/processing orders feed (real-time list)
- */
-router.get('/operator/feed', protect, operator, async (req, res) => {
-  try {
-    const orders = await Order.find({
-      status: { $in: ['new', 'processing', 'confirmed'] },
-    })
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .populate('assignedDriver', 'name phone');
-
-    const result = await Promise.all(
-      orders.map(async (o) => {
-        const items = await OrderItem.find({ order: o._id });
-        return { ...o.toObject(), items };
-      })
-    );
-    res.json({ orders: result });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-/**
- * POST /api/orders/:id/operator/confirm-cash
- * Operator — mark cash payment as confirmed (collected by courier)
- */
-router.post('/:id/operator/confirm-cash', protect, operator, async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    order.paymentStatus = 'paid';
-    order.paymentMethod = 'cash';
-    order.paidAt = new Date();
-    await order.save();
-
-    res.json({ message: 'Cash confirmed', order });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-/**
- * POST /api/orders/:id/operator/assign-driver
- * Operator — assign a driver to an order
- */
-router.post('/:id/operator/assign-driver', protect, operator, async (req, res) => {
-  try {
-    const { driverId } = req.body;
-    if (!driverId) return res.status(400).json({ message: 'driverId required' });
-
-    const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    const driverUser = await User.findById(driverId);
-    if (!driverUser || driverUser.role !== 'driver') {
-      return res.status(400).json({ message: 'Invalid driver' });
-    }
-
-    order.assignedDriver = driverId;
-    order.deliveryStatus = 'assigned';
-    order.status = 'processing';
-    await order.save();
-
-    res.json({ message: 'Driver assigned', order });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-/**
- * POST /api/orders/:id/operator/status
- * Operator — update order status (new→processing→confirmed etc.)
- */
-router.post('/:id/operator/status', protect, operator, async (req, res) => {
-  try {
-    const { status } = req.body;
-    const valid = ['processing', 'confirmed', 'cancelled'];
-    if (!valid.includes(status)) return res.status(400).json({ message: 'Invalid status' });
-
-    const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    order.status = status;
-    await order.save();
-
-    // ── Broadcast to all Telegram drivers when processing or confirmed ──
-    if ((status === 'confirmed' || status === 'processing') && !order.assignedDriver && !order.driverTelegramId) {
-      const { notifyDriversOfNewOrder } = require('../services/notifications');
-      const OrderItem = require('../models/OrderItem');
-      const items = await OrderItem.find({ order: order._id }).lean();
-      const sent = await notifyDriversOfNewOrder(order, items);
-      if (sent.length) {
-        const { redis } = require('../config/redis');
-        await redis.setex(`order:${order._id}:driver_notif`, 3600, JSON.stringify(sent));
-      }
-    }
-
-    res.json({ message: 'Status updated', order });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-/**
- * GET /api/orders/operator/drivers
- * Operator — get list of available drivers to assign
- */
-router.get('/operator/drivers', protect, operator, async (req, res) => {
-  try {
-    const [drivers, tgDrivers] = await Promise.all([
-      User.find({ role: 'driver', isActive: true }).select('name phone email').lean(),
-      TelegramUser.find({ role: 'driver', isActive: true }).select('firstName phone telegramId').lean(),
-    ]);
-    const combined = [
-      ...drivers.map(d => ({ _id: d._id, name: d.name, phone: d.phone, email: d.email, source: 'web' })),
-      ...tgDrivers.map(d => ({ _id: d._id, name: d.firstName || 'Kurer', phone: d.phone, telegramId: d.telegramId, source: 'telegram' })),
-    ];
-    res.json({ drivers: combined });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
 module.exports = router;
