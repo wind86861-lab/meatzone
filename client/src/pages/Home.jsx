@@ -80,7 +80,7 @@ function CategoryCard({ category, active, onClick }) {
     <button
       onClick={onClick}
       className={cn(
-        'group relative shrink-0 w-[140px] h-[96px] rounded-2xl overflow-hidden text-left tap shadow-sm',
+        'group relative w-full h-[92px] rounded-2xl overflow-hidden text-left tap shadow-sm',
         'transition-transform duration-200 active:scale-[0.97] ring-1 ring-inset',
         active ? 'ring-2 ring-primary' : 'ring-white/10'
       )}
@@ -104,31 +104,6 @@ function CategoryCard({ category, active, onClick }) {
         </div>
       </div>
     </button>
-  )
-}
-
-function CategoryRow({ items, reverse = false, duration = 34, onSelect }) {
-  const [paused, setPaused] = useState(false)
-  if (!items.length) return null
-  const loop = [...items, ...items]
-  return (
-    <div className="overflow-hidden">
-      <div
-        className={cn(
-          'flex gap-2.5 w-max',
-          reverse ? 'animate-marquee-rev' : 'animate-marquee',
-          paused && '[animation-play-state:paused]'
-        )}
-        style={{ animationDuration: `${duration}s` }}
-        onPointerDown={() => setPaused(true)}
-        onPointerUp={() => setPaused(false)}
-        onPointerCancel={() => setPaused(false)}
-      >
-        {loop.map((c, i) => (
-          <CategoryCard key={`${c.id}_${i}`} category={c} onClick={() => onSelect(c)} />
-        ))}
-      </div>
-    </div>
   )
 }
 
@@ -187,33 +162,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Categories — two independent auto-sliding rows */}
-      <SectionHeader title={t(lang, 'home.categories')} />
-      {loading ? (
-        <div className="space-y-2.5 mb-2">
-          {[0, 1].map(r => (
-            <div key={r} className="flex gap-2.5 px-4 overflow-hidden">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="w-[140px] h-[96px] rounded-2xl shrink-0" />)}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2.5 mb-2">
-          <CategoryRow
-            duration={36}
-            items={[{ id: 'all', label: t(lang, 'home.all'), emoji: '🥩', gradient: 'from-[#2A0E0E] to-[#140707]', image: '' }, ...categories.slice(0, Math.ceil(categories.length / 2))]}
-            onSelect={(c) => { haptic('light'); navigate(c.id === 'all' ? '/catalog' : `/catalog?category=${c.id}`) }}
-          />
-          {categories.length > 1 && (
-            <CategoryRow
-              reverse
-              duration={30}
-              items={categories.slice(Math.ceil(categories.length / 2))}
-              onSelect={(c) => { haptic('light'); navigate(`/catalog?category=${c.id}`) }}
-            />
-          )}
-        </div>
-      )}
+      {/* Categories — top 6, static grid */}
+      <SectionHeader title={t(lang, 'home.categories')} action={t(lang, 'home.all')} onAction={() => navigate('/catalog')} />
+      <div className="px-4 grid grid-cols-3 gap-2.5 mb-2">
+        {loading
+          ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[92px] rounded-2xl" />)
+          : categories.slice(0, 6).map(c => (
+              <CategoryCard key={c.id} category={c} onClick={() => { haptic('light'); navigate(`/catalog?category=${c.id}`) }} />
+            ))}
+      </div>
 
       {/* Top picks horizontal scroll */}
       <SectionHeader title={t(lang, 'home.topProducts')} action={t(lang, 'home.all')} onAction={() => navigate('/catalog')} />
