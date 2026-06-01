@@ -9,6 +9,7 @@ import { cn } from '../../utils/format'
 const TAB_KEYS = [
   { path: '/', key: 'nav.home', icon: Home },
   { path: '/catalog', key: 'nav.catalog', icon: Search },
+  { path: '/cart', key: 'nav.cart', icon: ShoppingBag },
   { path: '/orders', key: 'nav.orders', icon: ClipboardList },
   { path: '/profile', key: 'nav.profile', icon: User },
 ]
@@ -35,7 +36,7 @@ export default function BottomNav() {
             >
               <div className="relative">
                 <Icon size={22} strokeWidth={active ? 2.4 : 1.8} />
-                {path === '/catalog' && count > 0 && (
+                {path === '/cart' && count > 0 && (
                   <span className="absolute -top-1.5 -right-2.5 min-w-[15px] h-[15px] rounded-full bg-primary text-white text-[9px] font-extrabold flex items-center justify-center px-0.5">
                     {count}
                   </span>
