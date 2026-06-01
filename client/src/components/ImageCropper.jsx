@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react'
 import Cropper from 'react-easy-crop'
-import { X, ZoomIn, ZoomOut } from 'lucide-react'
+import { X, ZoomOut, RotateCcw, RotateCw } from 'lucide-react'
 
 export default function ImageCropper({ image, onComplete, onCancel, aspect = 1 }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
 
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
@@ -13,7 +14,7 @@ export default function ImageCropper({ image, onComplete, onCancel, aspect = 1 }
 
   const handleDone = async () => {
     if (!croppedAreaPixels) return
-    const croppedImage = await getCroppedImg(image, croppedAreaPixels)
+    const croppedImage = await getCroppedImg(image, croppedAreaPixels, rotation)
     onComplete(croppedImage)
   }
 
@@ -33,9 +34,11 @@ export default function ImageCropper({ image, onComplete, onCancel, aspect = 1 }
           image={image}
           crop={crop}
           zoom={zoom}
+          rotation={rotation}
           aspect={aspect}
           onCropChange={setCrop}
           onZoomChange={setZoom}
+          onRotationChange={setRotation}
           onCropComplete={onCropComplete}
           cropShape="rect"
           showGrid={true}
@@ -67,6 +70,22 @@ export default function ImageCropper({ image, onComplete, onCancel, aspect = 1 }
           <ZoomOut size={18} className="text-white/70 flex-shrink-0 rotate-180" />
         </div>
 
+        {/* Rotate Buttons */}
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={() => setRotation((r) => r - 90)}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <RotateCcw size={16} /> 90°
+          </button>
+          <button
+            onClick={() => setRotation((r) => r + 90)}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <RotateCw size={16} /> 90°
+          </button>
+        </div>
+
         {/* Action Buttons */}
         <div className="flex gap-3">
           <button
@@ -87,26 +106,42 @@ export default function ImageCropper({ image, onComplete, onCancel, aspect = 1 }
   )
 }
 
-// Helper function to create cropped image
-async function getCroppedImg(imageSrc, pixelCrop) {
+function getRadianAngle(degree) {
+  return (degree * Math.PI) / 180
+}
+
+// Bounding box size of an image after rotation
+function rotateSize(width, height, rotation) {
+  const rotRad = getRadianAngle(rotation)
+  return {
+    width: Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
+    height: Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
+  }
+}
+
+// Helper function to create cropped (and optionally rotated) image
+async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
   const image = await createImage(imageSrc)
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
 
+  const rotRad = getRadianAngle(rotation)
+  const { width: bBoxWidth, height: bBoxHeight } = rotateSize(image.width, image.height, rotation)
+
+  // Draw the rotated image onto a bounding-box-sized canvas
+  canvas.width = bBoxWidth
+  canvas.height = bBoxHeight
+  ctx.translate(bBoxWidth / 2, bBoxHeight / 2)
+  ctx.rotate(rotRad)
+  ctx.translate(-image.width / 2, -image.height / 2)
+  ctx.drawImage(image, 0, 0)
+
+  // Extract the crop area (pixelCrop is relative to the rotated bounding box)
+  const data = ctx.getImageData(pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height)
+
   canvas.width = pixelCrop.width
   canvas.height = pixelCrop.height
-
-  ctx.drawImage(
-    image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  )
+  ctx.putImageData(data, 0, 0)
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
