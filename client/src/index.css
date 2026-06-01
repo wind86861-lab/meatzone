@@ -71,6 +71,7 @@ html.dark {
   body {
     @apply bg-bg text-ink font-body antialiased;
     overscroll-behavior-y: none;
+    overflow-x: hidden;
     transition: background-color .3s ease, color .3s ease;
   }
 
@@ -185,7 +186,6 @@ html.dark {
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);
-  overflow-x: hidden;
   transition: background-color .3s ease;
 }
 
