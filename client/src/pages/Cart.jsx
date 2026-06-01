@@ -331,44 +331,6 @@ export default function Cart() {
             ))}
           </AnimatePresence>
 
-          {/* Promo */}
-          <div className="bg-bg-surface rounded-xl border border-ink-line p-3 flex items-center gap-2">
-            <Tag size={16} className="text-ink-dim" />
-            <input
-              value={promo}
-              onChange={e => { setPromo(e.target.value); if (promoApplied) { setPromoApplied(false); setPromoDiscount(0); setPromoError('') } }}
-              placeholder={t(lang, 'cart.promo')}
-              className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink-mute outline-none"
-            />
-            <button
-              onClick={async () => {
-                if (promoApplied) {
-                  setPromoApplied(false); setPromoDiscount(0); setPromoError(''); haptic('light'); return
-                }
-                if (!promo.trim()) return
-                setPromoLoading(true); setPromoError('')
-                try {
-                  const res = await promosAPI.validate({ code: promo.trim(), orderTotal: total })
-                  if (res.data.valid) { setPromoDiscount(res.data.discount); setPromoApplied(true); haptic('success') }
-                  else { setPromoError(res.data.message || 'Noto\'g\'ri kod'); haptic('error') }
-                } catch {
-                  setPromoError(lang === 'uz' ? 'Xatolik yuz berdi' : 'Ошибка проверки'); haptic('error')
-                } finally { setPromoLoading(false) }
-              }}
-              className={cn(
-                "px-3 h-8 rounded-lg text-xs font-bold tap whitespace-nowrap",
-                promoApplied ? "bg-success text-white" : "bg-primary text-white",
-                promoLoading && "opacity-60 pointer-events-none"
-              )}
-            >
-              {promoLoading ? '...' : promoApplied ? t(lang, 'cart.remove') : t(lang, 'cart.apply')}
-            </button>
-          </div>
-          {promoError && <p className="text-xs text-red-500 px-1 -mt-2">{promoError}</p>}
-          {promoApplied && (
-            <p className="text-xs text-success px-1 -mt-2">✅ {lang === 'uz' ? `Chegirma: −${formatSum(promoDiscount)}` : `Скидка: −${formatSum(promoDiscount)}`}</p>
-          )}
-
           {/* Section: Customer Info */}
           <div className="bg-bg-surface rounded-xl border border-ink-line overflow-hidden">
             <div className="px-4 py-2.5 border-b border-ink-line/60 bg-bg-surface3/40">
@@ -536,6 +498,44 @@ export default function Cart() {
               })}
             </div>
           </div>
+
+          {/* Promo (after Payment) */}
+          <div className="bg-bg-surface rounded-xl border border-ink-line p-3 flex items-center gap-2">
+            <Tag size={16} className="text-ink-dim" />
+            <input
+              value={promo}
+              onChange={e => { setPromo(e.target.value); if (promoApplied) { setPromoApplied(false); setPromoDiscount(0); setPromoError('') } }}
+              placeholder={t(lang, 'cart.promo')}
+              className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink-mute outline-none"
+            />
+            <button
+              onClick={async () => {
+                if (promoApplied) {
+                  setPromoApplied(false); setPromoDiscount(0); setPromoError(''); haptic('light'); return
+                }
+                if (!promo.trim()) return
+                setPromoLoading(true); setPromoError('')
+                try {
+                  const res = await promosAPI.validate({ code: promo.trim(), orderTotal: total })
+                  if (res.data.valid) { setPromoDiscount(res.data.discount); setPromoApplied(true); haptic('success') }
+                  else { setPromoError(res.data.message || 'Noto\'g\'ri kod'); haptic('error') }
+                } catch {
+                  setPromoError(lang === 'uz' ? 'Xatolik yuz berdi' : 'Ошибка проверки'); haptic('error')
+                } finally { setPromoLoading(false) }
+              }}
+              className={cn(
+                "px-3 h-8 rounded-lg text-xs font-bold tap whitespace-nowrap",
+                promoApplied ? "bg-success text-white" : "bg-primary text-white",
+                promoLoading && "opacity-60 pointer-events-none"
+              )}
+            >
+              {promoLoading ? '...' : promoApplied ? t(lang, 'cart.remove') : t(lang, 'cart.apply')}
+            </button>
+          </div>
+          {promoError && <p className="text-xs text-red-500 px-1 -mt-2">{promoError}</p>}
+          {promoApplied && (
+            <p className="text-xs text-success px-1 -mt-2">✅ {lang === 'uz' ? `Chegirma: −${formatSum(promoDiscount)}` : `Скидка: −${formatSum(promoDiscount)}`}</p>
+          )}
 
           {/* Spacer for bottom bar */}
           <div className="h-4" />

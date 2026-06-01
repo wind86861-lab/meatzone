@@ -52,15 +52,16 @@ export default function ProductDetail() {
   useEffect(() => {
     let mounted = true
     setLoading(true)
+    setQty(1) // Reset quantity to 1 when product changes
     productsAPI.getById(id).then(res => {
       if (!mounted) return
       const p = adaptProduct(res.data)
       setProduct(p)
       // Fetch related
-      productsAPI.getAll({ limit: 10 }).then(r => {
+      productsAPI.getAll({ limit: 16 }).then(r => {
         if (!mounted) return
         const prods = (r.data.products || []).map(adaptProduct)
-        setRelated(prods.filter(x => x.cat === p.cat && x.id !== p.id).slice(0, 3))
+        setRelated(prods.filter(x => x.cat === p.cat && x.id !== p.id).slice(0, 8))
       })
       setLoading(false)
     }).catch(() => setLoading(false))
@@ -175,19 +176,19 @@ export default function ProductDetail() {
         {related.length > 0 && (
           <>
             <h3 className="font-display text-lg text-ink mb-3">{t(lang, 'product.similar')}</h3>
-            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 pb-2">
               {related.map(r => (
                 <button
                   key={r.id}
                   onClick={() => { haptic('light'); navigate(`/product/${r.id}`) }}
-                  className="shrink-0 w-[120px] bg-bg-surface rounded-lg border border-ink-line p-2.5 text-left tap"
+                  className="bg-bg-surface rounded-xl border border-ink-line p-2.5 text-left tap"
                 >
                   {r.images?.[0] ? (
-                    <div className="w-full h-14 mb-1.5 rounded-md overflow-hidden">
-                      <img src={r.images[0]} alt="" className="w-full h-full object-cover" />
+                    <div className="w-full aspect-square mb-2 rounded-lg overflow-hidden bg-bg-surface2 flex items-center justify-center">
+                      <img src={r.images[0]} alt="" className="w-full h-full object-contain" />
                     </div>
                   ) : (
-                    <div className="text-3xl mb-1.5">{r.emoji}</div>
+                    <div className="w-full aspect-square mb-2 rounded-lg bg-bg-surface2 flex items-center justify-center text-3xl">{r.emoji}</div>
                   )}
                   <div className="text-[11px] font-bold text-ink line-clamp-1">{r.name}</div>
                   <div className="text-[11px] text-ink-dim mt-0.5 tabular">{formatSum(r.price)}</div>

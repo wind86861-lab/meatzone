@@ -29,7 +29,7 @@ function adaptProduct(p) {
     emoji: EMOJI_MAP[p.category?.slug || p.cat] || '🥩',
     price: finalPrice,
     old: hasDiscount ? p.price : null,
-    cat: p.category?._id || p.category?.slug || p.cat,
+    cat: String(p.category?._id || p.category || p.cat || ''),
     badge,
     rating: p.rating || 4.5,
     reviews: p.reviews || 12,
@@ -40,13 +40,26 @@ function adaptProduct(p) {
 
 function adaptCategory(c) {
   return {
-    id: c.slug || c._id || c.id,
+    id: String(c._id || c.id || ''),
     label: typeof c.name === 'string' ? c.name : (c.name?.uz || c.name?.ru || c.name?.en || 'Kategoriya'),
     emoji: EMOJI_MAP[c.slug] || '🥩',
     image: c.image || '',
     count: c.count || 0,
     gradient: 'from-[#1A0A0A] to-[#2D1510]',
+    parentId: c.parent ? String(c.parent?._id || c.parent) : null,
   }
+}
+
+// Get all descendant category IDs (parent + all subcategories recursively)
+function getDescendantIds(catId, allCats, visited = new Set()) {
+  if (visited.has(catId)) return []
+  visited.add(catId)
+  const ids = [catId]
+  const children = allCats.filter(c => c.parentId === catId)
+  for (const child of children) {
+    ids.push(...getDescendantIds(child.id, allCats, visited))
+  }
+  return ids
 }
 
 function adaptBanner(b) {
@@ -75,12 +88,12 @@ export default function Home() {
   useEffect(() => {
     let mounted = true
     Promise.all([
-      categoriesAPI.getAll().then(r => r.data),
+      categoriesAPI.getAll({ parent: 'null' }).then(r => r.data),
       productsAPI.getAll({ limit: 20 }).then(r => r.data),
       bannersAPI.getAll().then(r => r.data).catch(() => []),
     ]).then(([catsRes, prodsRes, bannersRes]) => {
       if (!mounted) return
-      setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).filter(c => !c.parent).map(adaptCategory))
+      setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).map(adaptCategory))
       setProducts((prodsRes.products || []).map(adaptProduct))
       setBanners((bannersRes || []).map(adaptBanner))
       setLoading(false)
@@ -88,8 +101,9 @@ export default function Home() {
     return () => { mounted = false }
   }, [])
 
+  const allowedIds = cat === 'all' ? null : getDescendantIds(cat, categories)
   const filtered = products.filter(p =>
-    (cat === 'all' || p.cat === cat) &&
+    (cat === 'all' || allowedIds.includes(p.cat)) &&
     p.name.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -120,10 +134,10 @@ export default function Home() {
       <SectionHeader title={t(lang, 'home.categories')} />
       <div className="px-4 grid grid-cols-3 gap-2.5 mb-1">
         <CategoryTile category={{ id: 'all', label: t(lang, 'home.all'), emoji: '🥩', count: products.length, gradient: 'from-[#1A0A0A] to-[#2D1510]' }}
-          active={cat === 'all'} onClick={() => { haptic('light'); setCat('all') }} />
+          active={cat === 'all'} onClick={() => { haptic('light'); navigate('/catalog') }} />
         {loading ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="aspect-[1/1.1] rounded-md" />) :
           categories.map(c => (
-            <CategoryTile key={c.id} category={c} active={cat === c.id} onClick={() => { haptic('light'); setCat(c.id) }} />
+            <CategoryTile key={c.id} category={c} active={cat === c.id} onClick={() => { haptic('light'); navigate(`/catalog?category=${c.id}`) }} />
           ))}
       </div>
 

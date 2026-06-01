@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { productsAPI, categoriesAPI, uploadAPI } from '../../services/api'
 import { Plus, Pencil, Trash2, Search, X, Upload, Star, StarOff, Package, ChevronDown } from 'lucide-react'
+import ImageCropper from '../../components/ImageCropper'
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([])
@@ -14,6 +15,7 @@ export default function AdminProducts() {
   const [editing, setEditing] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [formParentCat, setFormParentCat] = useState('')
+  const [cropperImage, setCropperImage] = useState(null)
   const [form, setForm] = useState({
     name: { uz: '', ru: '', en: '' },
     description: { uz: '', ru: '', en: '' },
@@ -106,7 +108,7 @@ export default function AdminProducts() {
     setShowModal(true)
   }
 
-  const handleImageUpload = async (e) => {
+  const handleImageSelect = (e) => {
     const file = e.target.files[0]
     if (!file) return
 
@@ -116,10 +118,19 @@ export default function AdminProducts() {
       return
     }
 
+    const reader = new FileReader()
+    reader.onload = () => {
+      setCropperImage(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropComplete = async (croppedBlob) => {
+    setCropperImage(null)
     setUploading(true)
     try {
       const fd = new FormData()
-      fd.append('image', file)
+      fd.append('image', croppedBlob, 'product.jpg')
       const res = await uploadAPI.single(fd)
       setForm(prev => ({ ...prev, images: [...prev.images, res.data.url] }))
     } catch (err) {
@@ -449,7 +460,7 @@ export default function AdminProducts() {
                   ))}
                   <label className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400">
                     {uploading ? <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full" /> : <Upload size={20} className="text-gray-400" />}
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                   </label>
                 </div>
               </div>
@@ -472,6 +483,16 @@ export default function AdminProducts() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Image Cropper */}
+      {cropperImage && (
+        <ImageCropper
+          image={cropperImage}
+          aspect={1}
+          onComplete={handleCropComplete}
+          onCancel={() => setCropperImage(null)}
+        />
       )}
     </div>
   )
