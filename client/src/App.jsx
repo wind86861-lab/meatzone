@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import Home from './pages/Home'
 import Catalog from './pages/Catalog'
@@ -50,6 +50,7 @@ function App() {
                 <Route path="product/:id" element={<ProductDetail />} />
                 <Route path="cart" element={<Cart />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AnimatePresence>
           </div>
