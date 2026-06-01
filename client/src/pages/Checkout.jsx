@@ -160,10 +160,7 @@ export default function Checkout() {
             ← Telegramga qaytish
           </Button>
         ) : (
-          <>
-            <Button variant="primary" onClick={() => navigate('/orders')}>{t(lang, 'checkout.myOrders')}</Button>
-            <button onClick={() => navigate('/')} className="mt-3 text-sm text-ink-dim underline">{t(lang, 'checkout.backHome')}</button>
-          </>
+          <Button variant="primary" onClick={() => navigate('/')}>{t(lang, 'checkout.backHome')}</Button>
         )}
       </motion.div>
     )

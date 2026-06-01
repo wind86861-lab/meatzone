@@ -5,7 +5,6 @@ import Home from './pages/Home'
 import Catalog from './pages/Catalog'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
-import Orders from './pages/Orders'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import DriverDashboard from './pages/driver/DriverDashboard'
@@ -50,7 +49,6 @@ function App() {
                 <Route path="catalog/:id" element={<ProductDetail />} />
                 <Route path="product/:id" element={<ProductDetail />} />
                 <Route path="cart" element={<Cart />} />
-                <Route path="orders" element={<Orders />} />
                 <Route path="profile" element={<Profile />} />
               </Routes>
             </AnimatePresence>

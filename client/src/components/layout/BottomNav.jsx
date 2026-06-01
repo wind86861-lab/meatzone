@@ -1,6 +1,6 @@
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, Search, ShoppingBag, ClipboardList, User } from 'lucide-react'
+import { Home, Search, ShoppingBag, User } from 'lucide-react'
 import { useCart } from '../../store/cartStore'
 import { useLangStore } from '../../store/langStore'
 import { t } from '../../utils/i18n'
@@ -10,7 +10,6 @@ const TAB_KEYS = [
   { path: '/', key: 'nav.home', icon: Home },
   { path: '/catalog', key: 'nav.catalog', icon: Search },
   { path: '/cart', key: 'nav.cart', icon: ShoppingBag },
-  { path: '/orders', key: 'nav.orders', icon: ClipboardList },
   { path: '/profile', key: 'nav.profile', icon: User },
 ]
 
