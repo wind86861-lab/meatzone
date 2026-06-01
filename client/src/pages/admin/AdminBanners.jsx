@@ -18,6 +18,7 @@ export default function AdminBanners() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadingId, setUploadingId] = useState(null)
+  const [linkModes, setLinkModes] = useState({})
 
   useEffect(() => { fetchBanners(); fetchCategories() }, [])
 
@@ -146,6 +147,8 @@ export default function AdminBanners() {
       ...subsOf(c._id).map(s => ({ value: `/catalog?category=${s._id}`, label: `— ${catName(s)}` })),
     ]),
   ]
+  const isCategoryLink = (link) => !link || link === '/catalog' || link.startsWith('/catalog?category=')
+  const getLinkMode = (b) => linkModes[b._id] ?? (isCategoryLink(b.link) ? 'category' : 'custom')
 
   return (
     <div className="space-y-6">
@@ -215,14 +218,32 @@ export default function AdminBanners() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Havola (kategoriya)</label>
-                    <select value={b.link || '/catalog'} onChange={e => updateBanner(b._id, 'link', e.target.value)}
-                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      {b.link && !linkOptions.some(o => o.value === b.link) && (
-                        <option value={b.link}>{b.link}</option>
-                      )}
-                      {linkOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-medium text-gray-500">Havola</label>
+                      <div className="flex gap-1">
+                        <button type="button" onClick={() => setLinkModes(prev => ({ ...prev, [b._id]: 'category' }))}
+                          className={`px-2 py-0.5 rounded text-[11px] font-medium ${getLinkMode(b) === 'category' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                          Kategoriya
+                        </button>
+                        <button type="button" onClick={() => setLinkModes(prev => ({ ...prev, [b._id]: 'custom' }))}
+                          className={`px-2 py-0.5 rounded text-[11px] font-medium ${getLinkMode(b) === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                          Link
+                        </button>
+                      </div>
+                    </div>
+                    {getLinkMode(b) === 'category' ? (
+                      <select value={b.link || '/catalog'} onChange={e => updateBanner(b._id, 'link', e.target.value)}
+                        className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {b.link && !linkOptions.some(o => o.value === b.link) && (
+                          <option value={b.link}>{b.link}</option>
+                        )}
+                        {linkOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    ) : (
+                      <input type="text" value={b.link || ''} onChange={e => updateBanner(b._id, 'link', e.target.value)}
+                        placeholder="https://... yoki /catalog"
+                        className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    )}
                   </div>
                 </div>
                 <div>

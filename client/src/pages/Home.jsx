@@ -151,7 +151,7 @@ export default function Home() {
       <div className="px-4 pt-4 pb-1">
         <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
           {banners.length > 0 ? banners.map(p => (
-            <div key={p.id} className="snap-start" onClick={() => { haptic('light'); navigate(p.link || '/catalog') }}>
+            <div key={p.id} className="snap-start" onClick={() => { haptic('light'); const link = p.link || '/catalog'; if (/^https?:\/\//i.test(link)) window.location.href = link; else navigate(link) }}>
               <PromoCard promo={p} />
             </div>
           )) : (
