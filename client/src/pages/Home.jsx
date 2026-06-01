@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { TopBar, SearchBar } from '../components/layout/TopBar'
@@ -84,6 +84,7 @@ export default function Home() {
   const [categories, setCategories] = useState([])
   const [banners, setBanners] = useState([])
   const [loading, setLoading] = useState(true)
+  const catScrollRef = useRef(null)
 
   useEffect(() => {
     let mounted = true
@@ -100,6 +101,23 @@ export default function Home() {
     }).catch(() => setLoading(false))
     return () => { mounted = false }
   }, [])
+
+  // Auto-slide the categories carousel
+  useEffect(() => {
+    const el = catScrollRef.current
+    if (!el || loading) return
+    const id = setInterval(() => {
+      if (!el) return
+      const maxScroll = el.scrollWidth - el.clientWidth
+      if (maxScroll <= 4) return
+      if (el.scrollLeft >= maxScroll - 4) {
+        el.scrollTo({ left: 0, behavior: 'smooth' })
+      } else {
+        el.scrollBy({ left: el.clientWidth * 0.7, behavior: 'smooth' })
+      }
+    }, 3000)
+    return () => clearInterval(id)
+  }, [loading, categories])
 
   const allowedIds = cat === 'all' ? null : getDescendantIds(cat, categories)
   const filtered = products.filter(p =>
@@ -130,15 +148,17 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Categories */}
+      {/* Categories — 2-row auto slider */}
       <SectionHeader title={t(lang, 'home.categories')} />
-      <div className="px-4 grid grid-cols-3 gap-2.5 mb-1">
-        <CategoryTile category={{ id: 'all', label: t(lang, 'home.all'), emoji: '🥩', count: products.length, gradient: 'from-[#1A0A0A] to-[#2D1510]' }}
-          active={cat === 'all'} onClick={() => { haptic('light'); navigate('/catalog') }} />
-        {loading ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="aspect-[1/1.1] rounded-md" />) :
-          categories.map(c => (
-            <CategoryTile key={c.id} category={c} active={cat === c.id} onClick={() => { haptic('light'); navigate(`/catalog?category=${c.id}`) }} />
-          ))}
+      <div ref={catScrollRef} className="px-4 overflow-x-auto no-scrollbar pb-1 mb-1">
+        <div className="grid grid-rows-2 grid-flow-col auto-cols-[100px] gap-2.5">
+          <CategoryTile category={{ id: 'all', label: t(lang, 'home.all'), emoji: '🥩', count: products.length, gradient: 'from-[#1A0A0A] to-[#2D1510]' }}
+            active={cat === 'all'} onClick={() => { haptic('light'); navigate('/catalog') }} />
+          {loading ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[1/1.1] rounded-md" />) :
+            categories.map(c => (
+              <CategoryTile key={c.id} category={c} active={cat === c.id} onClick={() => { haptic('light'); navigate(`/catalog?category=${c.id}`) }} />
+            ))}
+        </div>
       </div>
 
       {/* Top picks horizontal scroll */}
