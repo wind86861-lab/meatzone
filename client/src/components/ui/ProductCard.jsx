@@ -52,7 +52,7 @@ export function ProductCardH({ product, onClick }) {
       {/* Body */}
       <div className="p-2.5 pt-2">
         <div className="text-[12px] font-bold text-ink mb-0.5 line-clamp-1 leading-tight">{product.name}</div>
-        <div className="text-[10px] text-ink-mute font-medium mb-2 line-clamp-1">{product.meta}</div>
+        {product.meta && <div className="text-[10px] text-ink-mute font-medium mb-2 line-clamp-1">{product.meta}</div>}
 
         <div className="flex items-end justify-between gap-2">
           <div className="min-w-0">
@@ -175,9 +175,11 @@ export function ProductCardV({ product, onClick }) {
         <div className="text-[13.5px] font-bold text-ink leading-snug line-clamp-1 mb-0.5">
           {product.name}
         </div>
-        <div className="text-[10.5px] text-ink-mute font-medium mb-2.5 line-clamp-1">
-          {product.meta}
-        </div>
+        {product.meta && (
+          <div className="text-[10.5px] text-ink-mute font-medium mb-2.5 line-clamp-1">
+            {product.meta}
+          </div>
+        )}
 
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <div className="font-display text-[22px] text-ink tabular leading-none">

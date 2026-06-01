@@ -16,7 +16,7 @@ const EMOJI_MAP = {
 
 function adaptProduct(p) {
   const name = typeof p.name === 'string' ? p.name : (p.name?.uz || p.name?.ru || p.name?.en || 'Mahsulot')
-  const meta = p.stock ? `${p.stock} ta qoldi` : ''
+  const meta = ''
   const finalPrice = p.finalPrice ?? p.price
   const hasDiscount = finalPrice < p.price
   const badge = hasDiscount

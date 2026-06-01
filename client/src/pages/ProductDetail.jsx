@@ -16,7 +16,7 @@ const EMOJI_MAP = {
 
 function adaptProduct(p) {
   const name = typeof p.name === 'string' ? p.name : (p.name?.uz || p.name?.ru || p.name?.en || 'Mahsulot')
-  const meta = p.stock ? `${p.stock} ta qoldi` : ''
+  const meta = ''
   const finalPrice = p.finalPrice ?? p.price
   const hasDiscount = finalPrice < p.price
   const badge = hasDiscount
@@ -136,8 +136,6 @@ export default function ProductDetail() {
       <div className="flex-1 px-4 pt-5 pb-28">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs text-ink-dim font-medium capitalize">{product.cat}</span>
-          <span className="text-ink-line">·</span>
-          <span className="text-xs text-ink-dim font-medium">{product.stock ? `${product.stock} ${t(lang, 'product.inStock')}` : product.meta}</span>
         </div>
 
         <h1 className="font-display text-3xl tracking-wide text-ink mb-2">{product.name}</h1>
