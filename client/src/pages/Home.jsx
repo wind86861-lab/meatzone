@@ -80,7 +80,7 @@ export default function Home() {
       bannersAPI.getAll().then(r => r.data).catch(() => []),
     ]).then(([catsRes, prodsRes, bannersRes]) => {
       if (!mounted) return
-      setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).map(adaptCategory))
+      setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).filter(c => !c.parent).map(adaptCategory))
       setProducts((prodsRes.products || []).map(adaptProduct))
       setBanners((bannersRes || []).map(adaptBanner))
       setLoading(false)

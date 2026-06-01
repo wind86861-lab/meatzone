@@ -63,7 +63,7 @@ export default function Catalog() {
       productsAPI.getAll({ limit: 200 }).then(r => r.data),
     ]).then(([catsRes, prodsRes]) => {
       if (!mounted) return
-      setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).map(adaptCategory))
+      setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).filter(c => !c.parent).map(adaptCategory))
       setProducts((prodsRes.products || []).map(adaptProduct))
       setLoading(false)
     }).catch(() => setLoading(false))
