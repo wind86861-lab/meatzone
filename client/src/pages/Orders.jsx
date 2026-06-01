@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Package, Clock, CheckCircle, Truck, Search } from 'lucide-react'
+import { ArrowLeft, Package, Clock, CheckCircle } from 'lucide-react'
 import { ordersAPI } from '../services/api'
 import { useAuthStore } from '../store/authStore'
 import { useLangStore } from '../store/langStore'
@@ -33,63 +33,30 @@ function adaptOrder(o) {
   }
 }
 
-const isTelegramApp = () => !!(window.Telegram?.WebApp?.initData)
-
 export default function Orders() {
   const navigate = useNavigate()
   const { lang } = useLangStore()
   const { token, telegramAutoLogin } = useAuthStore()
   const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [searched, setSearched] = useState(false)
-  const [query, setQuery] = useState(localStorage.getItem('mz_phone') || '')
-  const [autoMode, setAutoMode] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  // Auto-fetch orders for Telegram Mini App users
+  // Auto-load the signed-in user's orders
   useEffect(() => {
-    if (!isTelegramApp()) return
-
     const load = async () => {
       setLoading(true)
-      setAutoMode(true)
       try {
-        // Ensure Telegram auto-login completed (idempotent if already done)
         if (!token) await telegramAutoLogin()
-
         const res = await ordersAPI.getMyOrders()
         const raw = res.data?.orders || []
         setOrders(raw.map(adaptOrder))
-        setSearched(true)
       } catch {
-        setSearched(true)
         setOrders([])
       } finally {
         setLoading(false)
       }
     }
-
     load()
   }, []) // eslint-disable-line
-
-  const fetchOrders = async () => {
-    const q = query.trim()
-    if (!q) return
-    setLoading(true)
-    setSearched(true)
-    setAutoMode(false)
-    localStorage.setItem('mz_phone', q)
-    try {
-      const res = await ordersAPI.getByPhone(q)
-      const raw = res.data?.orders || []
-      setOrders(raw.map(adaptOrder))
-    } catch {
-      setOrders([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleKey = (e) => { if (e.key === 'Enter') fetchOrders() }
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-bg pb-24">
@@ -101,8 +68,7 @@ export default function Orders() {
       </div>
 
       <div className="px-4 pt-4 flex flex-col gap-4">
-        {/* Order count for Telegram users */}
-        {autoMode && orders.length > 0 && (
+        {!loading && orders.length > 0 && (
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
             <span className="text-sm font-bold text-primary">
               {lang === 'uz' ? 'Sizning buyurtmalaringiz' : lang === 'en' ? 'Your orders' : 'Ваши заказы'}
@@ -113,47 +79,13 @@ export default function Orders() {
           </div>
         )}
 
-        {/* Search box — always visible */}
-        <div className="bg-bg-surface rounded-lg border border-ink-line p-4">
-          <label className="block text-sm font-bold text-ink mb-2">
-            {t(lang, 'orders.phone')}
-          </label>
-          <div className="flex gap-2">
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="+998 __ ___ __ __"
-              className="flex-1 bg-bg-surface3 border border-ink-line rounded-md px-3 h-11 text-sm text-ink placeholder:text-ink-mute outline-none"
-            />
-            <button
-              onClick={fetchOrders}
-              disabled={!query.trim() || loading}
-              className="h-11 px-4 rounded-md bg-primary text-white text-sm font-bold flex items-center gap-1.5 disabled:opacity-50 tap"
-            >
-              <Search size={16} />
-              {loading ? '...' : t(lang, 'orders.find')}
-            </button>
-          </div>
-          {autoMode && orders.length > 0 && (
-            <p className="mt-2 text-xs text-ink-dim">
-              {lang === 'ru' ? '✅ Заказы загружены по вашему аккаунту Telegram' : '✅ Buyurtmalar Telegram akkauntingiz bo\'yicha yuklandi'}
-            </p>
-          )}
-        </div>
-
         {loading ? (
           <div className="flex items-center justify-center py-12 text-ink-dim text-sm">{t(lang, 'orders.loading')}</div>
-        ) : searched && orders.length === 0 ? (
+        ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="text-4xl mb-2">📦</div>
             <p className="text-ink-dim text-sm">{t(lang, 'orders.noOrders')}</p>
             <button onClick={() => navigate('/catalog')} className="mt-3 text-sm text-primary font-bold">{t(lang, 'orders.goToCatalog')}</button>
-          </div>
-        ) : !searched ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="text-4xl mb-2">🔍</div>
-            <p className="text-ink-dim text-sm">{t(lang, 'orders.enterPhone')}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
