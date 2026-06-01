@@ -242,9 +242,6 @@ export function CategoryTile({ category, active, onClick }) {
         ) : (
           <span className="text-[40px]">{category.emoji}</span>
         )}
-        <span className="absolute top-1.5 right-1.5 bg-black/50 text-ink-dim text-[9px] font-bold px-1.5 py-0.5 rounded">
-          {category.count}
-        </span>
       </div>
       <div className={cn(
         'py-2 px-1.5 text-center text-[11px] font-bold leading-tight bg-bg-surface',
