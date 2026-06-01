@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { bannersAPI, uploadAPI } from '../../services/api'
+import { bannersAPI, uploadAPI, categoriesAPI } from '../../services/api'
 import { Plus, Trash2, Save, Check, Upload, Eye, EyeOff, GripVertical } from 'lucide-react'
 
 const VARIANTS = [
@@ -13,12 +13,13 @@ const VARIANTS = [
 
 export default function AdminBanners() {
   const [banners, setBanners] = useState([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadingId, setUploadingId] = useState(null)
 
-  useEffect(() => { fetchBanners() }, [])
+  useEffect(() => { fetchBanners(); fetchCategories() }, [])
 
   const fetchBanners = async () => {
     try {
@@ -27,6 +28,14 @@ export default function AdminBanners() {
       setBanners(res.data || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const res = await categoriesAPI.getAll()
+      const data = res.data
+      setCategories(Array.isArray(data) ? data : (data.categories || []))
+    } catch (err) { console.error(err) }
   }
 
   const updateBanner = (id, field, value) => {
@@ -127,6 +136,17 @@ export default function AdminBanners() {
     )
   }
 
+  const catName = (c) => (typeof c.name === 'string' ? c.name : (c.name?.uz || c.name?.ru || c.name?.en || 'Kategoriya'))
+  const topCats = categories.filter(c => !c.parent)
+  const subsOf = (id) => categories.filter(c => String(c.parent?._id || c.parent || '') === String(id))
+  const linkOptions = [
+    { value: '/catalog', label: 'Katalog (barchasi)' },
+    ...topCats.flatMap(c => [
+      { value: `/catalog?category=${c._id}`, label: catName(c) },
+      ...subsOf(c._id).map(s => ({ value: `/catalog?category=${s._id}`, label: `— ${catName(s)}` })),
+    ]),
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
@@ -195,9 +215,14 @@ export default function AdminBanners() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Havola (link)</label>
-                    <input type="text" value={b.link || ''} onChange={e => updateBanner(b._id, 'link', e.target.value)}
-                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Havola (kategoriya)</label>
+                    <select value={b.link || '/catalog'} onChange={e => updateBanner(b._id, 'link', e.target.value)}
+                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {b.link && !linkOptions.some(o => o.value === b.link) && (
+                        <option value={b.link}>{b.link}</option>
+                      )}
+                      {linkOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                   </div>
                 </div>
                 <div>
