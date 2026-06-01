@@ -205,3 +205,24 @@ html.dark .admin-page {
   --admin-text: #111827;
   --admin-muted: #6B7280;
 }
+
+/* ─── Category marquee (continuous auto-slide) ─── */
+@keyframes marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+@keyframes marquee-rev {
+  from { transform: translate3d(-50%, 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+.animate-marquee {
+  animation: marquee linear infinite;
+  will-change: transform;
+}
+.animate-marquee-rev {
+  animation: marquee-rev linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee, .animate-marquee-rev { animation: none; }
+}

@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { TopBar, SearchBar } from '../components/layout/TopBar'
 import BottomNav from '../components/layout/BottomNav'
-import { ProductCardH, CategoryTile, PromoCard } from '../components/ui/ProductCard'
+import { ProductCardH, PromoCard } from '../components/ui/ProductCard'
 import { SectionHeader, Skeleton } from '../components/ui'
 import { productsAPI, categoriesAPI, bannersAPI } from '../services/api'
 import { useLangStore } from '../store/langStore'
 import { t } from '../utils/i18n'
-import { haptic } from '../utils/format'
+import { haptic, cn } from '../utils/format'
 
 const EMOJI_MAP = {
   beef: '🥩', mutton: '🐑', chicken: '🍗', sausage: '🌭', ready: '🥘', frozen: '❄️',
@@ -75,6 +75,63 @@ function adaptBanner(b) {
   }
 }
 
+function CategoryCard({ category, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'group relative shrink-0 w-[140px] h-[96px] rounded-2xl overflow-hidden text-left tap shadow-sm',
+        'transition-transform duration-200 active:scale-[0.97] ring-1 ring-inset',
+        active ? 'ring-2 ring-primary' : 'ring-white/10'
+      )}
+    >
+      {category.image ? (
+        <img
+          src={category.image}
+          alt={category.label}
+          loading="lazy"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <div className={cn('absolute inset-0 bg-gradient-to-br flex items-center justify-center text-[42px]', category.gradient)}>
+          {category.emoji}
+        </div>
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 p-2.5">
+        <div className="text-white text-[12.5px] font-extrabold leading-[1.15] line-clamp-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.75)]">
+          {category.label}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function CategoryRow({ items, reverse = false, duration = 34, onSelect }) {
+  const [paused, setPaused] = useState(false)
+  if (!items.length) return null
+  const loop = [...items, ...items]
+  return (
+    <div className="overflow-hidden">
+      <div
+        className={cn(
+          'flex gap-2.5 w-max',
+          reverse ? 'animate-marquee-rev' : 'animate-marquee',
+          paused && '[animation-play-state:paused]'
+        )}
+        style={{ animationDuration: `${duration}s` }}
+        onPointerDown={() => setPaused(true)}
+        onPointerUp={() => setPaused(false)}
+        onPointerCancel={() => setPaused(false)}
+      >
+        {loop.map((c, i) => (
+          <CategoryCard key={`${c.id}_${i}`} category={c} onClick={() => onSelect(c)} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const navigate = useNavigate()
   const { lang } = useLangStore()
@@ -84,7 +141,6 @@ export default function Home() {
   const [categories, setCategories] = useState([])
   const [banners, setBanners] = useState([])
   const [loading, setLoading] = useState(true)
-  const catScrollRef = useRef(null)
 
   useEffect(() => {
     let mounted = true
@@ -101,23 +157,6 @@ export default function Home() {
     }).catch(() => setLoading(false))
     return () => { mounted = false }
   }, [])
-
-  // Auto-slide the categories carousel
-  useEffect(() => {
-    const el = catScrollRef.current
-    if (!el || loading) return
-    const id = setInterval(() => {
-      if (!el) return
-      const maxScroll = el.scrollWidth - el.clientWidth
-      if (maxScroll <= 4) return
-      if (el.scrollLeft >= maxScroll - 4) {
-        el.scrollTo({ left: 0, behavior: 'smooth' })
-      } else {
-        el.scrollBy({ left: el.clientWidth * 0.7, behavior: 'smooth' })
-      }
-    }, 3000)
-    return () => clearInterval(id)
-  }, [loading, categories])
 
   const allowedIds = cat === 'all' ? null : getDescendantIds(cat, categories)
   const filtered = products.filter(p =>
@@ -148,18 +187,33 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Categories — 2-row auto slider */}
+      {/* Categories — two independent auto-sliding rows */}
       <SectionHeader title={t(lang, 'home.categories')} />
-      <div ref={catScrollRef} className="px-4 overflow-x-auto no-scrollbar pb-1 mb-1">
-        <div className="grid grid-rows-2 grid-flow-col auto-cols-[100px] gap-2.5">
-          <CategoryTile category={{ id: 'all', label: t(lang, 'home.all'), emoji: '🥩', count: products.length, gradient: 'from-[#1A0A0A] to-[#2D1510]' }}
-            active={cat === 'all'} onClick={() => { haptic('light'); navigate('/catalog') }} />
-          {loading ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[1/1.1] rounded-md" />) :
-            categories.map(c => (
-              <CategoryTile key={c.id} category={c} active={cat === c.id} onClick={() => { haptic('light'); navigate(`/catalog?category=${c.id}`) }} />
-            ))}
+      {loading ? (
+        <div className="space-y-2.5 mb-2">
+          {[0, 1].map(r => (
+            <div key={r} className="flex gap-2.5 px-4 overflow-hidden">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="w-[140px] h-[96px] rounded-2xl shrink-0" />)}
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="space-y-2.5 mb-2">
+          <CategoryRow
+            duration={36}
+            items={[{ id: 'all', label: t(lang, 'home.all'), emoji: '🥩', gradient: 'from-[#2A0E0E] to-[#140707]', image: '' }, ...categories.slice(0, Math.ceil(categories.length / 2))]}
+            onSelect={(c) => { haptic('light'); navigate(c.id === 'all' ? '/catalog' : `/catalog?category=${c.id}`) }}
+          />
+          {categories.length > 1 && (
+            <CategoryRow
+              reverse
+              duration={30}
+              items={categories.slice(Math.ceil(categories.length / 2))}
+              onSelect={(c) => { haptic('light'); navigate(`/catalog?category=${c.id}`) }}
+            />
+          )}
+        </div>
+      )}
 
       {/* Top picks horizontal scroll */}
       <SectionHeader title={t(lang, 'home.topProducts')} action={t(lang, 'home.all')} onAction={() => navigate('/catalog')} />
