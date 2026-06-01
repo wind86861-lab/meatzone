@@ -1,9 +1,8 @@
 import React from 'react'
-import { ArrowLeft, ShoppingBag, Search, Sun, Moon } from 'lucide-react'
+import { ArrowLeft, ShoppingBag, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../store/cartStore'
 import { useLangStore } from '../../store/langStore'
-import { useThemeStore } from '../../store/themeStore'
 import { IconButton } from '../ui'
 import { cn } from '../../utils/format'
 
@@ -16,7 +15,6 @@ export function TopBar({ variant = 'home', title, onBack, children }) {
   const navigate = useNavigate()
   const count = useCart((s) => s.items.reduce((a, i) => a + i.qty, 0))
   const { lang, toggle } = useLangStore()
-  const { theme, toggle: toggleTheme } = useThemeStore()
 
   return (
     <div className="relative bg-primary-600 px-4 pt-safe pb-4 stripes">
@@ -36,16 +34,12 @@ export function TopBar({ variant = 'home', title, onBack, children }) {
         )}
 
         <div className="flex items-center gap-2">
-          <button onClick={toggleTheme}
-            className="h-8 w-8 rounded-md bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-colors flex items-center justify-center"
-            aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-          <button onClick={toggle}
-            className="h-8 px-2 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-bold tracking-wide border border-white/20 transition-colors flex items-center gap-1">
-            <span className="text-base leading-none">{lang === 'uz' ? '🇺🇿' : lang === 'ru' ? '🇷🇺' : '🇬🇧'}</span>
-            <span className="hidden sm:inline">{lang === 'uz' ? 'UZ' : lang === 'ru' ? 'RU' : 'EN'}</span>
-          </button>
+          {variant === 'home' && (
+            <button onClick={toggle}
+              className="h-8 px-2.5 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-bold tracking-wide border border-white/20 transition-colors">
+              {lang === 'uz' ? 'UZ' : lang === 'ru' ? 'RU' : 'EN'}
+            </button>
+          )}
           {variant !== 'plain' && (
             <div className="relative">
               <IconButton onClick={() => navigate('/cart')} aria-label="Savat">

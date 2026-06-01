@@ -3,16 +3,13 @@
 @tailwind utilities;
 
 /* ════════════════════════════════════════════════════════════════
-   MEATZONE — Design tokens & global base (Light / Dark)
+   MEATZONE — Design tokens & global base
    ════════════════════════════════════════════════════════════════ */
-
-/* ── Light (default) ── */
 :root {
   --bg: #F5F0EC;
   --surface: #FFFFFF;
   --surface2: #F0EBE6;
   --surface3: #E6E0DA;
-  --surface4: #DAD4CE;
 
   --primary: #E8251A;
   --primary-d: #C41810;
@@ -24,8 +21,6 @@
 
   --line: rgba(60, 40, 30, .12);
   --line2: rgba(60, 40, 30, .06);
-  --shadow-soft: 0 2px 12px -2px rgba(0,0,0,.12);
-  --shadow-card: 0 8px 22px -8px rgba(0,0,0,.18);
 
   --r-sm: 10px;
   --r-md: 16px;
@@ -36,24 +31,6 @@
   --safe-t: env(safe-area-inset-top, 0px);
 }
 
-/* ── Dark ── */
-html.dark {
-  --bg: #0F0A08;
-  --surface: #1A1410;
-  --surface2: #241E18;
-  --surface3: #2E2820;
-  --surface4: #38322A;
-
-  --ink: #F5F0EC;
-  --ink-dim: #B0A090;
-  --ink-mute: #7A6E60;
-
-  --line: rgba(255, 230, 210, .12);
-  --line2: rgba(255, 230, 210, .06);
-  --shadow-soft: 0 2px 12px -2px rgba(0,0,0,.55);
-  --shadow-card: 0 8px 22px -8px rgba(0,0,0,.65);
-}
-
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
@@ -61,17 +38,12 @@ html.dark {
 
   html {
     background: var(--bg);
-    color-scheme: light;
-  }
-
-  html.dark {
     color-scheme: dark;
   }
 
   body {
     @apply bg-bg text-ink font-body antialiased;
     overscroll-behavior-y: none;
-    transition: background-color .3s ease, color .3s ease;
   }
 
   ::selection {
@@ -97,10 +69,6 @@ html.dark {
   ::-webkit-scrollbar-thumb {
     background: rgba(60, 40, 30, .18);
     border-radius: 999px;
-  }
-
-  html.dark ::-webkit-scrollbar-thumb {
-    background: rgba(255, 230, 210, .18);
   }
 
   input,
@@ -134,10 +102,6 @@ html.dark {
     backdrop-filter: blur(12px);
   }
 
-  html.dark .glass {
-    background: linear-gradient(180deg, rgba(30, 24, 20, .92), rgba(20, 16, 12, .92));
-  }
-
   /* Pattern overlay (diagonal stripes) */
   .stripes::before {
     content: '';
@@ -145,10 +109,6 @@ html.dark {
     inset: 0;
     background: repeating-linear-gradient(-55deg, transparent 0, transparent 18px, rgba(0, 0, 0, .08) 18px, rgba(0, 0, 0, .08) 19px);
     pointer-events: none;
-  }
-
-  html.dark .stripes::before {
-    background: repeating-linear-gradient(-55deg, transparent 0, transparent 18px, rgba(255, 255, 255, .04) 18px, rgba(255, 255, 255, .04) 19px);
   }
 
   /* Skeleton shimmer */
@@ -186,22 +146,4 @@ html.dark {
   min-height: 100dvh;
   background: var(--bg);
   overflow-x: hidden;
-  transition: background-color .3s ease;
-}
-
-/* Dark mode admin overrides */
-html.dark .admin-page {
-  --admin-bg: #0F0A08;
-  --admin-surface: #1A1410;
-  --admin-border: rgba(255,230,210,.12);
-  --admin-text: #F5F0EC;
-  --admin-muted: #B0A090;
-}
-
-.admin-page {
-  --admin-bg: #FFFFFF;
-  --admin-surface: #F9FAFB;
-  --admin-border: #E5E7EB;
-  --admin-text: #111827;
-  --admin-muted: #6B7280;
 }

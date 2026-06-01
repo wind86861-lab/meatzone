@@ -1,16 +1,14 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, MapPin, Phone, HelpCircle, ChevronRight, User, Globe, Sun, Moon } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, HelpCircle, ChevronRight, User, Globe } from 'lucide-react'
 import { useLangStore } from '../store/langStore'
 import { useAuthStore } from '../store/authStore'
-import { useThemeStore } from '../store/themeStore'
 import { t } from '../utils/i18n'
 
 export default function Profile() {
   const navigate = useNavigate()
   const { lang, setLang } = useLangStore()
-  const { theme, toggle: toggleTheme } = useThemeStore()
   const { telegramUser, isTelegram, user, requestTelegramPhone, requestTelegramLocation } = useAuthStore()
   const [phone, setPhone] = useState('')
   const [location, setLocation] = useState(null)
@@ -143,43 +141,18 @@ export default function Profile() {
           <span className="text-sm font-bold text-ink">{t(lang, 'profile.language')}</span>
           <div className="flex gap-2">
             <button onClick={() => setLang('uz')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-colors ${lang === 'uz' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
-              <span className="text-base leading-none">🇺🇿</span>
-              <span>UZ</span>
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'uz' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              UZ
             </button>
             <button onClick={() => setLang('ru')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-colors ${lang === 'ru' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
-              <span className="text-base leading-none">🇷🇺</span>
-              <span>RU</span>
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'ru' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              RU
             </button>
             <button onClick={() => setLang('en')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-colors ${lang === 'en' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
-              <span className="text-base leading-none">🇬🇧</span>
-              <span>EN</span>
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${lang === 'en' ? 'bg-primary text-white' : 'bg-bg-surface3 text-ink-dim'}`}>
+              EN
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Theme */}
-      <div className="px-4 pt-3 pb-6">
-        <div className="bg-bg-surface rounded-lg border border-ink-line p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {theme === 'dark' ? <Moon size={16} className="text-ink-dim" /> : <Sun size={16} className="text-ink-dim" />}
-            <span className="text-sm font-bold text-ink">
-              {lang === 'ru' ? 'Тема' : lang === 'en' ? 'Theme' : 'Mavzu'}
-            </span>
-          </div>
-          <button
-            onClick={toggleTheme}
-            className={`relative h-7 w-12 rounded-full transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-bg-surface3'}`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow flex items-center justify-center transition-transform ${theme === 'dark' ? 'translate-x-5' : 'translate-x-0'}`}
-            >
-              {theme === 'dark' ? <Moon size={12} className="text-primary" /> : <Sun size={12} className="text-amber-500" />}
-            </span>
-          </button>
         </div>
       </div>
     </motion.div>

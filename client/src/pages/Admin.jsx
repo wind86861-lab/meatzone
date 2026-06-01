@@ -11,7 +11,6 @@ import AdminCategories from './admin/AdminCategories'
 import AdminSettings from './admin/AdminSettings'
 import AdminDelivery from './admin/AdminDelivery'
 import AdminUsers from './admin/AdminUsers'
-import AdminUserDetail from './admin/AdminUserDetail'
 import AdminBanners from './admin/AdminBanners'
 import AdminCash from './admin/AdminCash'
 import AdminCashHandovers from './admin/AdminCashHandovers'
@@ -268,7 +267,6 @@ function AdminShell() {
               <Route path="orders/:id/check" element={<AdminCheck />} />
               <Route path="products" element={<AdminProducts />} />
               <Route path="users" element={<AdminUsers />} />
-              <Route path="users/:id" element={<AdminUserDetail />} />
               <Route path="categories" element={<AdminCategories />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="banners" element={<AdminBanners />} />

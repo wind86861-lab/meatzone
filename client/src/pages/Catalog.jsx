@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { TopBar } from '../components/layout/TopBar'
 import BottomNav from '../components/layout/BottomNav'
@@ -29,7 +29,7 @@ function adaptProduct(p) {
     emoji: EMOJI_MAP[p.category?.slug || p.cat] || '🥩',
     price: finalPrice,
     old: hasDiscount ? p.price : null,
-    cat: String(p.category?._id || p.category || p.cat || ''),
+    cat: p.category?._id || p.category?.slug || p.cat,
     badge,
     rating: p.rating || 4.5,
     reviews: p.reviews || 12,
@@ -40,29 +40,15 @@ function adaptProduct(p) {
 
 function adaptCategory(c) {
   return {
-    id: String(c._id || c.id || ''),
+    id: c.slug || c._id || c.id,
     label: typeof c.name === 'string' ? c.name : (c.name?.uz || c.name?.ru || c.name?.en || 'Kategoriya'),
     emoji: EMOJI_MAP[c.slug] || '🥩',
     count: c.count || 0,
-    parentId: c.parent ? String(c.parent?._id || c.parent) : null,
   }
-}
-
-// Get all descendant category IDs (parent + all subcategories recursively)
-function getDescendantIds(catId, allCats, visited = new Set()) {
-  if (visited.has(catId)) return []
-  visited.add(catId)
-  const ids = [catId]
-  const children = allCats.filter(c => c.parentId === catId)
-  for (const child of children) {
-    ids.push(...getDescendantIds(child.id, allCats, visited))
-  }
-  return ids
 }
 
 export default function Catalog() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { lang } = useLangStore()
   const [cat, setCat] = useState('all')
   const [sort, setSort] = useState('popular')
@@ -80,18 +66,11 @@ export default function Catalog() {
       setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).map(adaptCategory))
       setProducts((prodsRes.products || []).map(adaptProduct))
       setLoading(false)
-
-      // Set category from URL if provided
-      const categoryParam = searchParams.get('category')
-      if (categoryParam) {
-        setCat(categoryParam)
-      }
     }).catch(() => setLoading(false))
     return () => { mounted = false }
-  }, [searchParams])
+  }, [])
 
-  const allowedIds = cat === 'all' ? null : getDescendantIds(cat, categories)
-  const filtered = products.filter(p => cat === 'all' || allowedIds.includes(p.cat))
+  const filtered = products.filter(p => cat === 'all' || p.cat === cat)
   const sorted = [...filtered].sort((a, b) => {
     if (sort === 'price_asc') return a.price - b.price
     if (sort === 'price_desc') return b.price - a.price
