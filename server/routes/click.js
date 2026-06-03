@@ -149,6 +149,17 @@ router.post('/complete', express.urlencoded({ extended: true }), express.json(),
 
   logger.info('Click payment completed', { orderId: orderId, amount: order.totalPrice });
 
+  // Fiscalization (best-effort, non-blocking — never fails the payment)
+  try {
+    var OrderItemModel = require('../models/OrderItem');
+    var submitFiscalItems = require('../utils/clickFiscal').submitFiscalItems;
+    OrderItemModel.find({ order: order._id }).then(function (fitems) {
+      submitFiscalItems(order, fitems, p.click_paydoc_id || p.click_trans_id);
+    }).catch(function (e) { logger.error('Click fiscal load failed', { error: e.message }); });
+  } catch (e) {
+    logger.error('Click fiscal dispatch failed', { error: e.message });
+  }
+
   if (process.env.TELEGRAM_BOT_TOKEN) {
     var https = require('https');
     var token = process.env.TELEGRAM_BOT_TOKEN;
