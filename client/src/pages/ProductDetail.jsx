@@ -6,6 +6,7 @@ import { TopBar } from '../components/layout/TopBar'
 import { Button, Badge, Chip, Skeleton } from '../components/ui'
 import { productsAPI } from '../services/api'
 import { useCart } from '../store/cartStore'
+import { useToastStore } from '../store/toastStore'
 import { useLangStore } from '../store/langStore'
 import { t } from '../utils/i18n'
 import { formatSum, haptic, cn } from '../utils/format'
@@ -42,6 +43,7 @@ export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const add = useCart(s => s.add)
+  const showToast = useToastStore(s => s.show)
   const { lang } = useLangStore()
   const [qty, setQty] = useState(1)
   const [liked, setLiked] = useState(false)
@@ -95,6 +97,7 @@ export default function ProductDetail() {
   const handleAdd = () => {
     add(product, qty)
     haptic('success')
+    showToast(product.name, product.emoji || '🥩')
   }
 
   return (

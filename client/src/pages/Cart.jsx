@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Minus, Plus, Trash2, Tag, Send, CheckCircle,
-  User, Phone, MapPin, Navigation, CreditCard, Banknote, Wallet, ChevronRight, AlertCircle
+  User, Phone, MapPin, Navigation, CreditCard, Banknote, ChevronRight, AlertCircle
 } from 'lucide-react'
 import { Button } from '../components/ui'
 import { useCart } from '../store/cartStore'
@@ -17,7 +17,6 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 const PAYMENT_METHODS = [
   { id: 'cash', label: { uz: 'Naqd', ru: 'Наличные', en: 'Cash' }, icon: Banknote, color: 'bg-emerald-500' },
-  { id: 'payme', label: { uz: 'Payme', ru: 'Payme', en: 'Payme' }, icon: Wallet, color: 'bg-blue-500' },
   { id: 'click', label: { uz: 'Click', ru: 'Click', en: 'Click' }, icon: CreditCard, color: 'bg-sky-500' },
 ]
 
@@ -39,6 +38,7 @@ export default function Cart() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [orderId, setOrderId] = useState('')
+  const [payCheck, setPayCheck] = useState(null) // null | 'checking' | 'paid' | 'pending'
 
   // Customer info
   const [customerName, setCustomerName] = useState('')
@@ -69,6 +69,29 @@ export default function Cart() {
       if (fullName) setCustomerName(fullName)
     }
   }, [telegramUser])
+
+  // Handle return from Click/Payme checkout → verify real payment status
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('status') !== 'paid') return
+    const oid = localStorage.getItem('mz_pay_order')
+    if (!oid) { setPayCheck('paid'); return }
+    setPayCheck('checking')
+    let stop = false
+    let tries = 0
+    const poll = async () => {
+      if (stop) return
+      tries++
+      try {
+        const r = await ordersAPI.paymentStatus(oid)
+        if (r.data?.paymentStatus === 'paid') { setPayCheck('paid'); localStorage.removeItem('mz_pay_order'); return }
+      } catch { /* ignore, keep polling */ }
+      if (tries >= 15) { setPayCheck('pending'); return }
+      setTimeout(poll, 2000)
+    }
+    poll()
+    return () => { stop = true }
+  }, [])
 
   // Fetch delivery settings (store location + mapbox token)
   useEffect(() => {
@@ -220,13 +243,43 @@ export default function Cart() {
       })
 
       haptic('success')
+      const data = response.data
+      const newOrderId = data.order?._id || data.orderId || data._id || ''
+      const links = data.paymentLinks || {}
+
+      // Online payment (Click/Payme): redirect to the provider checkout page
+      if ((paymentMethod === 'click' || paymentMethod === 'payme') && links[paymentMethod]) {
+        if (newOrderId) localStorage.setItem('mz_pay_order', newOrderId)
+        clear()
+        window.location.href = links[paymentMethod]
+        return
+      }
+
+      // Cash (or no link): show success screen
       clear()
-      setOrderId(response.data.orderId || response.data._id || '')
+      setOrderId(newOrderId)
       setSuccess(true)
     } catch (err) {
       setError(lang === 'uz' ? "Xatolik yuz berdi. Qayta urinib ko'ring." : 'Произошла ошибка. Попробуйте снова.')
       setSubmitting(false)
     }
+  }
+
+  // Payment-status screen (after returning from Click/Payme)
+  if (payCheck) {
+    const cfg = {
+      checking: { icon: '⏳', bg: 'bg-amber-500/10', title: lang === 'ru' ? 'Проверяем оплату...' : lang === 'en' ? 'Checking payment...' : "To'lov tekshirilmoqda...", sub: lang === 'ru' ? 'Подождите немного' : lang === 'en' ? 'Please wait' : 'Biroz kuting' },
+      paid: { icon: '✅', bg: 'bg-success/10', title: lang === 'ru' ? 'Оплата получена!' : lang === 'en' ? 'Payment received!' : "To'lov qabul qilindi!", sub: lang === 'ru' ? 'Спасибо за заказ' : lang === 'en' ? 'Thank you for your order' : 'Buyurtmangiz uchun rahmat' },
+      pending: { icon: '⏳', bg: 'bg-amber-500/10', title: lang === 'ru' ? 'Оплата обрабатывается' : lang === 'en' ? 'Payment processing' : "To'lov tasdiqlanmoqda", sub: lang === 'ru' ? 'Если средства списаны, заказ подтвердится автоматически' : lang === 'en' ? 'If charged, your order will be confirmed automatically' : "Pul yechilgan bo'lsa, buyurtma avtomatik tasdiqlanadi" },
+    }[payCheck]
+    return (
+      <div className="min-h-[100dvh] flex flex-col bg-bg items-center justify-center px-6 text-center">
+        <div className={cn('w-20 h-20 rounded-full flex items-center justify-center mb-6 text-4xl', cfg.bg, payCheck === 'checking' && 'animate-pulse')}>{cfg.icon}</div>
+        <h2 className="font-display text-2xl text-ink mb-2">{cfg.title}</h2>
+        <p className="text-sm text-ink-dim mb-6">{cfg.sub}</p>
+        <Button variant="primary" onClick={() => navigate('/catalog')}>{t(lang, 'cart.goToCatalog')}</Button>
+      </div>
+    )
   }
 
   // Success screen

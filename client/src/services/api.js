@@ -167,6 +167,7 @@ export const ordersAPI = {
   delete: (id) => api.delete(`/orders/${id}`),
   updateStatus: (id, data) => api.put(`/orders/${id}/status`, data),
   getMyOrders: () => api.get('/orders/my-orders'),
+  paymentStatus: (id) => api.get(`/orders/${id}/payment-status`),
   pay: (id, data) => api.post(`/orders/${id}/pay`, data),
   serviceInfo: (token) => api.get(`/orders/service/${token}`),
   refund: (id, data) => api.post(`/orders/${id}/refund`, data),

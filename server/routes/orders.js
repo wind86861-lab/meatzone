@@ -458,6 +458,18 @@ router.post('/:id/confirm', protect, admin, async (req, res) => {
 });
 
 // =====================================================
+// PUBLIC: lightweight payment status (no auth) — used by the cart after redirect
+// =====================================================
+router.get('/:id/payment-status', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).select('paymentStatus status');
+    if (!order) return res.status(404).json({ message: 'Not found' });
+    res.json({ paymentStatus: order.paymentStatus, status: order.status });
+  } catch (e) {
+    res.status(400).json({ message: 'Bad request' });
+  }
+});
+
 // PUBLIC: after-sales info by serviceToken (no auth)
 // =====================================================
 router.get('/service/:token', async (req, res) => {
