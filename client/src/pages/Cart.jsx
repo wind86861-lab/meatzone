@@ -41,6 +41,14 @@ export default function Cart() {
   const [payCheck, setPayCheck] = useState(null) // null | 'checking' | 'paid' | 'unpaid'
   const [pending, setPending] = useState(null)   // { id, link, total } — order awaiting payment
 
+  // Open a payment URL. Inside Telegram use openLink so it goes to the real browser
+  // (the in-app webview can't handle Click's app deep-links → ERR_UNKNOWN_URL_SCHEME).
+  const openPayment = (url) => {
+    const tg = window.Telegram?.WebApp
+    if (tg && typeof tg.openLink === 'function') tg.openLink(url)
+    else window.location.href = url
+  }
+
   // Customer info
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
@@ -71,47 +79,41 @@ export default function Cart() {
     }
   }, [telegramUser])
 
-  // Resume / verify an awaiting-payment order (e.g. after returning from Click)
+  // Load any awaiting-payment order from storage
   useEffect(() => {
     const raw = localStorage.getItem('mz_pending')
     if (!raw) return
-    let p
-    try { p = JSON.parse(raw) } catch { localStorage.removeItem('mz_pending'); return }
-    setPending(p)
+    try {
+      const p = JSON.parse(raw)
+      setPending(p)
+      if (new URLSearchParams(window.location.search).get('status') === 'paid') setPayCheck('checking')
+    } catch { localStorage.removeItem('mz_pending') }
+  }, [])
 
-    const finishPaid = () => {
-      clear()
-      localStorage.removeItem('mz_pending')
-      setPending(null)
-      setPayCheck('paid')
+  // Poll the real payment status while an order is awaiting payment
+  useEffect(() => {
+    if (!pending) return
+    let stop = false
+    let tries = 0
+    const tick = async () => {
+      if (stop) return
+      tries++
+      try {
+        const r = await ordersAPI.paymentStatus(pending.id)
+        if (r.data?.paymentStatus === 'paid') {
+          clear()
+          localStorage.removeItem('mz_pending')
+          setPending(null)
+          setPayCheck('paid')
+          return
+        }
+      } catch { /* ignore */ }
+      if (tries >= 90) { setPayCheck(c => (c === 'checking' ? 'unpaid' : c)); return }
+      setTimeout(tick, 2000)
     }
-
-    const fromCheckout = new URLSearchParams(window.location.search).get('status') === 'paid'
-
-    if (fromCheckout) {
-      // Just returned from Click → full-screen verification with polling
-      setPayCheck('checking')
-      let stop = false
-      let tries = 0
-      const poll = async () => {
-        if (stop) return
-        tries++
-        try {
-          const r = await ordersAPI.paymentStatus(p.id)
-          if (r.data?.paymentStatus === 'paid') return finishPaid()
-        } catch { /* ignore */ }
-        if (tries >= 12) { setPayCheck('unpaid'); return }
-        setTimeout(poll, 2000)
-      }
-      poll()
-      return () => { stop = true }
-    } else {
-      // Normal cart visit → quietly check once; if paid clear, else keep the resume banner
-      ordersAPI.paymentStatus(p.id)
-        .then(r => { if (r.data?.paymentStatus === 'paid') finishPaid() })
-        .catch(() => {})
-    }
-  }, []) // eslint-disable-line
+    tick()
+    return () => { stop = true }
+  }, [pending]) // eslint-disable-line
 
   // Fetch delivery settings (store location + mapbox token)
   useEffect(() => {
@@ -271,8 +273,11 @@ export default function Cart() {
       // The cart is only cleared once payment is confirmed (on return).
       if (paymentMethod === 'click' && links.click) {
         const payTotal = data.order?.totalPrice || total
-        localStorage.setItem('mz_pending', JSON.stringify({ id: newOrderId, link: links.click, total: payTotal }))
-        window.location.href = links.click
+        const p = { id: newOrderId, link: links.click, total: payTotal }
+        localStorage.setItem('mz_pending', JSON.stringify(p))
+        setPending(p)
+        setSubmitting(false)
+        openPayment(links.click)
         return
       }
 
@@ -300,7 +305,7 @@ export default function Cart() {
         <p className="text-sm text-ink-dim mb-6">{cfg.sub}</p>
         {payCheck === 'unpaid' && pending ? (
           <div className="flex flex-col gap-3 w-full max-w-[280px]">
-            <Button variant="primary" onClick={() => { window.location.href = pending.link }}>
+            <Button variant="primary" onClick={() => { openPayment(pending.link) }}>
               {lang === 'ru' ? 'Продолжить оплату' : lang === 'en' ? 'Continue payment' : "To'lovni davom ettirish"}
             </Button>
             <button onClick={() => setPayCheck(null)} className="text-sm text-ink-dim underline">
@@ -385,7 +390,7 @@ export default function Cart() {
                 <div className="text-sm font-bold text-ink">{lang === 'ru' ? 'Незавершённая оплата' : lang === 'en' ? 'Unfinished payment' : "To'lanmagan buyurtma"}</div>
                 <div className="text-xs text-ink-dim truncate">{formatSum(pending.total)} • {lang === 'ru' ? 'продолжите оплату' : lang === 'en' ? 'continue the payment' : "to'lovni davom ettiring"}</div>
               </div>
-              <button onClick={() => { window.location.href = pending.link }} className="shrink-0 bg-primary text-white text-xs font-bold px-3 py-2 rounded-lg tap">
+              <button onClick={() => { openPayment(pending.link) }} className="shrink-0 bg-primary text-white text-xs font-bold px-3 py-2 rounded-lg tap">
                 {lang === 'ru' ? 'Оплатить' : lang === 'en' ? 'Pay' : "To'lash"}
               </button>
               <button onClick={() => { localStorage.removeItem('mz_pending'); setPending(null) }} className="shrink-0 text-ink-dim p-1 tap" aria-label="dismiss">
