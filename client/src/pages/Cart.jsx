@@ -38,7 +38,8 @@ export default function Cart() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [orderId, setOrderId] = useState('')
-  const [payCheck, setPayCheck] = useState(null) // null | 'checking' | 'paid' | 'pending'
+  const [payCheck, setPayCheck] = useState(null) // null | 'checking' | 'paid' | 'unpaid'
+  const [pending, setPending] = useState(null)   // { id, link, total } — order awaiting payment
 
   // Customer info
   const [customerName, setCustomerName] = useState('')
@@ -70,28 +71,47 @@ export default function Cart() {
     }
   }, [telegramUser])
 
-  // Handle return from Click/Payme checkout → verify real payment status
+  // Resume / verify an awaiting-payment order (e.g. after returning from Click)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('status') !== 'paid') return
-    const oid = localStorage.getItem('mz_pay_order')
-    if (!oid) { setPayCheck('paid'); return }
-    setPayCheck('checking')
-    let stop = false
-    let tries = 0
-    const poll = async () => {
-      if (stop) return
-      tries++
-      try {
-        const r = await ordersAPI.paymentStatus(oid)
-        if (r.data?.paymentStatus === 'paid') { setPayCheck('paid'); localStorage.removeItem('mz_pay_order'); return }
-      } catch { /* ignore, keep polling */ }
-      if (tries >= 15) { setPayCheck('pending'); return }
-      setTimeout(poll, 2000)
+    const raw = localStorage.getItem('mz_pending')
+    if (!raw) return
+    let p
+    try { p = JSON.parse(raw) } catch { localStorage.removeItem('mz_pending'); return }
+    setPending(p)
+
+    const finishPaid = () => {
+      clear()
+      localStorage.removeItem('mz_pending')
+      setPending(null)
+      setPayCheck('paid')
     }
-    poll()
-    return () => { stop = true }
-  }, [])
+
+    const fromCheckout = new URLSearchParams(window.location.search).get('status') === 'paid'
+
+    if (fromCheckout) {
+      // Just returned from Click → full-screen verification with polling
+      setPayCheck('checking')
+      let stop = false
+      let tries = 0
+      const poll = async () => {
+        if (stop) return
+        tries++
+        try {
+          const r = await ordersAPI.paymentStatus(p.id)
+          if (r.data?.paymentStatus === 'paid') return finishPaid()
+        } catch { /* ignore */ }
+        if (tries >= 12) { setPayCheck('unpaid'); return }
+        setTimeout(poll, 2000)
+      }
+      poll()
+      return () => { stop = true }
+    } else {
+      // Normal cart visit → quietly check once; if paid clear, else keep the resume banner
+      ordersAPI.paymentStatus(p.id)
+        .then(r => { if (r.data?.paymentStatus === 'paid') finishPaid() })
+        .catch(() => {})
+    }
+  }, []) // eslint-disable-line
 
   // Fetch delivery settings (store location + mapbox token)
   useEffect(() => {
@@ -247,11 +267,12 @@ export default function Cart() {
       const newOrderId = data.order?._id || data.orderId || data._id || ''
       const links = data.paymentLinks || {}
 
-      // Online payment (Click/Payme): redirect to the provider checkout page
-      if ((paymentMethod === 'click' || paymentMethod === 'payme') && links[paymentMethod]) {
-        if (newOrderId) localStorage.setItem('mz_pay_order', newOrderId)
-        clear()
-        window.location.href = links[paymentMethod]
+      // Online payment (Click): keep the cart, save as pending, redirect to checkout.
+      // The cart is only cleared once payment is confirmed (on return).
+      if (paymentMethod === 'click' && links.click) {
+        const payTotal = data.order?.totalPrice || total
+        localStorage.setItem('mz_pending', JSON.stringify({ id: newOrderId, link: links.click, total: payTotal }))
+        window.location.href = links.click
         return
       }
 
@@ -265,19 +286,30 @@ export default function Cart() {
     }
   }
 
-  // Payment-status screen (after returning from Click/Payme)
+  // Payment-status screen (after returning from Click)
   if (payCheck) {
     const cfg = {
       checking: { icon: '⏳', bg: 'bg-amber-500/10', title: lang === 'ru' ? 'Проверяем оплату...' : lang === 'en' ? 'Checking payment...' : "To'lov tekshirilmoqda...", sub: lang === 'ru' ? 'Подождите немного' : lang === 'en' ? 'Please wait' : 'Biroz kuting' },
       paid: { icon: '✅', bg: 'bg-success/10', title: lang === 'ru' ? 'Оплата получена!' : lang === 'en' ? 'Payment received!' : "To'lov qabul qilindi!", sub: lang === 'ru' ? 'Спасибо за заказ' : lang === 'en' ? 'Thank you for your order' : 'Buyurtmangiz uchun rahmat' },
-      pending: { icon: '⏳', bg: 'bg-amber-500/10', title: lang === 'ru' ? 'Оплата обрабатывается' : lang === 'en' ? 'Payment processing' : "To'lov tasdiqlanmoqda", sub: lang === 'ru' ? 'Если средства списаны, заказ подтвердится автоматически' : lang === 'en' ? 'If charged, your order will be confirmed automatically' : "Pul yechilgan bo'lsa, buyurtma avtomatik tasdiqlanadi" },
+      unpaid: { icon: '⚠️', bg: 'bg-amber-500/10', title: lang === 'ru' ? 'Оплата не завершена' : lang === 'en' ? 'Payment not completed' : "To'lov yakunlanmadi", sub: lang === 'ru' ? 'Вы можете продолжить оплату или вернуться в корзину' : lang === 'en' ? 'You can continue the payment or go back to the cart' : "To'lovni davom ettiring yoki savatga qayting" },
     }[payCheck]
     return (
       <div className="min-h-[100dvh] flex flex-col bg-bg items-center justify-center px-6 text-center">
         <div className={cn('w-20 h-20 rounded-full flex items-center justify-center mb-6 text-4xl', cfg.bg, payCheck === 'checking' && 'animate-pulse')}>{cfg.icon}</div>
         <h2 className="font-display text-2xl text-ink mb-2">{cfg.title}</h2>
         <p className="text-sm text-ink-dim mb-6">{cfg.sub}</p>
-        <Button variant="primary" onClick={() => navigate('/catalog')}>{t(lang, 'cart.goToCatalog')}</Button>
+        {payCheck === 'unpaid' && pending ? (
+          <div className="flex flex-col gap-3 w-full max-w-[280px]">
+            <Button variant="primary" onClick={() => { window.location.href = pending.link }}>
+              {lang === 'ru' ? 'Продолжить оплату' : lang === 'en' ? 'Continue payment' : "To'lovni davom ettirish"}
+            </Button>
+            <button onClick={() => setPayCheck(null)} className="text-sm text-ink-dim underline">
+              {lang === 'ru' ? 'Вернуться в корзину' : lang === 'en' ? 'Back to cart' : 'Savatga qaytish'}
+            </button>
+          </div>
+        ) : payCheck === 'checking' ? null : (
+          <Button variant="primary" onClick={() => navigate('/catalog')}>{t(lang, 'cart.goToCatalog')}</Button>
+        )}
       </div>
     )
   }
@@ -344,6 +376,23 @@ export default function Cart() {
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 pt-4 pb-[320px] flex flex-col gap-4">
+
+          {/* Unfinished payment — resume */}
+          {pending && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center gap-3">
+              <div className="text-2xl shrink-0">⏳</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-ink">{lang === 'ru' ? 'Незавершённая оплата' : lang === 'en' ? 'Unfinished payment' : "To'lanmagan buyurtma"}</div>
+                <div className="text-xs text-ink-dim truncate">{formatSum(pending.total)} • {lang === 'ru' ? 'продолжите оплату' : lang === 'en' ? 'continue the payment' : "to'lovni davom ettiring"}</div>
+              </div>
+              <button onClick={() => { window.location.href = pending.link }} className="shrink-0 bg-primary text-white text-xs font-bold px-3 py-2 rounded-lg tap">
+                {lang === 'ru' ? 'Оплатить' : lang === 'en' ? 'Pay' : "To'lash"}
+              </button>
+              <button onClick={() => { localStorage.removeItem('mz_pending'); setPending(null) }} className="shrink-0 text-ink-dim p-1 tap" aria-label="dismiss">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          )}
 
           {/* Items */}
           <AnimatePresence>
