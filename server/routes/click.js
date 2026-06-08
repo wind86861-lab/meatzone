@@ -36,8 +36,13 @@ function verifyClickSign(params) {
   return hash === params.sign_string;
 }
 
+// Click may probe these URLs with a GET when saving/validating them — answer OK
+router.get('/prepare', function (req, res) { res.json({ status: 'ok' }); });
+router.get('/complete', function (req, res) { res.json({ status: 'ok' }); });
+
 // ── Prepare (action=0) — Click asks: can we start payment? ──
 router.post('/prepare', express.urlencoded({ extended: true }), express.json(), async function (req, res) {
+ try {
   var p = req.body;
   logger.info('Click Prepare', { body: p });
 
@@ -86,10 +91,15 @@ router.post('/prepare', express.urlencoded({ extended: true }), express.json(), 
     merchant_trans_id: orderId,
     merchant_prepare_id: String(attempt._id),
   });
+ } catch (e) {
+  logger.error('Click Prepare exception', { error: e.message, stack: e.stack });
+  return res.json({ error: ClickError.TransactionError, error_note: 'Internal error' });
+ }
 });
 
 // ── Complete (action=1) — Click says: payment done ──
 router.post('/complete', express.urlencoded({ extended: true }), express.json(), async function (req, res) {
+ try {
   var p = req.body;
   logger.info('Click Complete', { body: p });
 
@@ -207,6 +217,10 @@ router.post('/complete', express.urlencoded({ extended: true }), express.json(),
     merchant_trans_id: orderId,
     merchant_confirm_id: String(attempt._id),
   });
+ } catch (e) {
+  logger.error('Click Complete exception', { error: e.message, stack: e.stack });
+  return res.json({ error: ClickError.TransactionError, error_note: 'Internal error' });
+ }
 });
 
 module.exports = router;
