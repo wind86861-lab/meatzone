@@ -269,19 +269,9 @@ export function PromoCard({ promo, onClick }) {
       className="shrink-0 w-[260px] h-[140px] rounded-lg overflow-hidden relative cursor-pointer border border-white/5"
     >
       {promo.image ? (
-        <img src={promo.image} alt={promo.title || ''} className="absolute inset-0 w-full h-full object-cover" />
+        <img src={promo.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className={cn('absolute inset-0 stripes', variants[promo.variant] || 'bg-red-gradient')} />
-      )}
-      {(promo.tag || promo.title || promo.sub) && (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-4">
-            {promo.tag && <div className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-0.5">{promo.tag}</div>}
-            {promo.title && <div className="font-display text-xl text-white leading-[1.05] whitespace-pre-line drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{promo.title}</div>}
-            {promo.sub && <div className="text-[11px] text-white/80 font-medium mt-0.5">{promo.sub}</div>}
-          </div>
-        </>
       )}
     </motion.div>
   )

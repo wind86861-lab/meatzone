@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { bannersAPI, categoriesAPI, uploadAPI } from '../../services/api'
 import { Plus, Trash2, Save, Check, Eye, EyeOff, GripVertical, Upload } from 'lucide-react'
+import ImageCropper from '../../components/ImageCropper'
+
+// Banner aspect ratio (matches the 260x140 promo card on the home page)
+const BANNER_ASPECT = 260 / 140
 
 const VARIANTS = [
   { value: 'red', label: 'Qizil', className: 'bg-red-600' },
@@ -19,6 +23,8 @@ export default function AdminBanners() {
   const [saved, setSaved] = useState(false)
   const [linkModes, setLinkModes] = useState({})
   const [uploadingId, setUploadingId] = useState(null)
+  const [cropperImage, setCropperImage] = useState(null)
+  const [cropperBannerId, setCropperBannerId] = useState(null)
 
   useEffect(() => { fetchBanners(); fetchCategories() }, [])
 
@@ -43,18 +49,28 @@ export default function AdminBanners() {
     setBanners(prev => prev.map(b => b._id === id ? { ...b, [field]: value } : b))
   }
 
-  const handleImageUpload = async (e, id) => {
+  const handleImageSelect = (e, id) => {
     const file = e.target.files[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return }
+    if (file.size > 10 * 1024 * 1024) { alert('Rasm juda katta (max 10MB)'); return }
+    const reader = new FileReader()
+    reader.onload = () => { setCropperImage(reader.result); setCropperBannerId(id) }
+    reader.readAsDataURL(file)
+    e.target.value = '' // allow re-selecting the same file
+  }
+
+  const handleCropComplete = async (croppedBlob) => {
+    const id = cropperBannerId
+    setCropperImage(null)
+    if (!id) return
     setUploadingId(id)
     try {
       const fd = new FormData()
-      fd.append('image', file)
+      fd.append('image', croppedBlob, 'banner.jpg')
       const res = await uploadAPI.single(fd)
       updateBanner(id, 'image', res.data.url)
     } catch { alert('Yuklashda xatolik') }
-    finally { setUploadingId(null) }
+    finally { setUploadingId(null); setCropperBannerId(null) }
   }
 
   const addBanner = () => {
@@ -237,7 +253,7 @@ export default function AdminBanners() {
                         <span className="text-white text-xs font-semibold flex items-center gap-1.5"><Upload size={16} /> {b.image ? 'Almashtirish' : 'Rasm yuklash'}</span>
                       )}
                     </div>
-                    <input type="file" accept="image/*" className="hidden" disabled={uploadingId === b._id} onChange={e => handleImageUpload(e, b._id)} />
+                    <input type="file" accept="image/*" className="hidden" disabled={uploadingId === b._id} onChange={e => handleImageSelect(e, b._id)} />
                   </label>
                   {b.image && (
                     <button onClick={() => updateBanner(b._id, 'image', '')} className="mt-1 text-xs text-red-500 hover:underline">Rasmni olib tashlash</button>
@@ -261,6 +277,15 @@ export default function AdminBanners() {
           {saved ? <><Check size={18} /> Saqlandi!</> : saving ? 'Saqlanmoqda...' : <><Save size={18} /> Saqlash</>}
         </button>
       </div>
+
+      {cropperImage && (
+        <ImageCropper
+          image={cropperImage}
+          aspect={BANNER_ASPECT}
+          onComplete={handleCropComplete}
+          onCancel={() => { setCropperImage(null); setCropperBannerId(null) }}
+        />
+      )}
     </div>
   )
 }
