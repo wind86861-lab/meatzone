@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { bannersAPI, uploadAPI, categoriesAPI } from '../../services/api'
-import { Plus, Trash2, Save, Check, Upload, Eye, EyeOff, GripVertical } from 'lucide-react'
+import { bannersAPI, categoriesAPI } from '../../services/api'
+import { Plus, Trash2, Save, Check, Eye, EyeOff, GripVertical } from 'lucide-react'
 
 const VARIANTS = [
   { value: 'red', label: 'Qizil', className: 'bg-red-600' },
@@ -17,7 +17,6 @@ export default function AdminBanners() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [uploadingId, setUploadingId] = useState(null)
   const [linkModes, setLinkModes] = useState({})
 
   useEffect(() => { fetchBanners(); fetchCategories() }, [])
@@ -70,20 +69,6 @@ export default function AdminBanners() {
       } catch (err) { alert('O\'chirishda xatolik'); return }
     }
     setBanners(prev => prev.filter(x => x._id !== id))
-  }
-
-  const handleImageUpload = async (e, id) => {
-    const file = e.target.files[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return }
-    setUploadingId(id)
-    try {
-      const fd = new FormData()
-      fd.append('image', file)
-      const res = await uploadAPI.single(fd)
-      updateBanner(id, 'image', res.data.url)
-    } catch { alert('Yuklashda xatolik') }
-    finally { setUploadingId(null) }
   }
 
   const handleSave = async () => {
@@ -246,28 +231,6 @@ export default function AdminBanners() {
                     )}
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Rasm</label>
-                  <div className="flex items-center gap-3">
-                    {b.image && (
-                      <img src={b.image} alt="" className="h-12 w-12 object-cover rounded-lg border border-gray-200" />
-                    )}
-                    <label className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 text-sm w-fit">
-                      {uploadingId === b._id ? (
-                        <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
-                      ) : (
-                        <Upload size={16} />
-                      )}
-                      <span>{b.image ? 'Almashtirish' : 'Yuklash'}</span>
-                      <input type="file" accept="image/*" className="hidden" disabled={uploadingId === b._id}
-                        onChange={e => handleImageUpload(e, b._id)} />
-                    </label>
-                    {b.image && (
-                      <button onClick={() => updateBanner(b._id, 'image', '')} className="text-xs text-red-500 hover:underline">Olib tashlash</button>
-                    )}
-                  </div>
-                </div>
-
                 {/* Preview */}
                 <div className="mt-2">
                   <label className="block text-xs font-medium text-gray-500 mb-1">Oldindan ko\'rish</label>
