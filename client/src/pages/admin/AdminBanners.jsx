@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { bannersAPI, categoriesAPI } from '../../services/api'
-import { Plus, Trash2, Save, Check, Eye, EyeOff, GripVertical } from 'lucide-react'
+import { bannersAPI, categoriesAPI, uploadAPI } from '../../services/api'
+import { Plus, Trash2, Save, Check, Eye, EyeOff, GripVertical, Upload } from 'lucide-react'
 
 const VARIANTS = [
   { value: 'red', label: 'Qizil', className: 'bg-red-600' },
@@ -18,6 +18,7 @@ export default function AdminBanners() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [linkModes, setLinkModes] = useState({})
+  const [uploadingId, setUploadingId] = useState(null)
 
   useEffect(() => { fetchBanners(); fetchCategories() }, [])
 
@@ -40,6 +41,20 @@ export default function AdminBanners() {
 
   const updateBanner = (id, field, value) => {
     setBanners(prev => prev.map(b => b._id === id ? { ...b, [field]: value } : b))
+  }
+
+  const handleImageUpload = async (e, id) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return }
+    setUploadingId(id)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const res = await uploadAPI.single(fd)
+      updateBanner(id, 'image', res.data.url)
+    } catch { alert('Yuklashda xatolik') }
+    finally { setUploadingId(null) }
   }
 
   const addBanner = () => {
@@ -179,17 +194,10 @@ export default function AdminBanners() {
                   <input type="text" value={b.subtitle || ''} onChange={e => updateBanner(b._id, 'subtitle', e.target.value)}
                     className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Teg (tag)</label>
-                    <input type="text" value={b.tag || ''} onChange={e => updateBanner(b._id, 'tag', e.target.value)}
-                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Emoji</label>
-                    <input type="text" value={b.emoji || ''} onChange={e => updateBanner(b._id, 'emoji', e.target.value)}
-                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Teg (tag)</label>
+                  <input type="text" value={b.tag || ''} onChange={e => updateBanner(b._id, 'tag', e.target.value)}
+                    className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
 
@@ -231,17 +239,33 @@ export default function AdminBanners() {
                     )}
                   </div>
                 </div>
-                {/* Preview */}
-                <div className="mt-2">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Oldindan ko\'rish</label>
-                  <div className={`inline-flex items-center gap-3 px-4 py-3 rounded-xl text-white ${VARIANTS.find(v => v.value === (b.variant || 'red'))?.className || 'bg-red-600'}`}>
-                    <span className="text-2xl">{b.emoji || '🥩'}</span>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wide opacity-80">{b.tag || 'TAG'}</div>
-                      <div className="text-sm font-bold leading-tight">{b.title || 'Title'}</div>
-                      <div className="text-xs opacity-90">{b.subtitle || 'Subtitle'}</div>
+                {/* Banner image — click the box to upload; this is how it looks on the site */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Banner rasmi (bosib yuklang)</label>
+                  <label className="group relative block w-full max-w-[340px] aspect-[13/7] rounded-xl overflow-hidden cursor-pointer border border-gray-200">
+                    {b.image ? (
+                      <img src={b.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className={`absolute inset-0 ${VARIANTS.find(v => v.value === (b.variant || 'red'))?.className || 'bg-red-600'}`} />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-3 text-white">
+                      {b.tag && <div className="text-[10px] uppercase tracking-wide opacity-80">{b.tag}</div>}
+                      <div className="text-sm font-bold leading-tight">{b.title || 'Sarlavha'}</div>
+                      {b.subtitle && <div className="text-xs opacity-90">{b.subtitle}</div>}
                     </div>
-                  </div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploadingId === b._id ? (
+                        <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
+                      ) : (
+                        <span className="text-white text-xs font-semibold flex items-center gap-1.5"><Upload size={16} /> {b.image ? 'Almashtirish' : 'Rasm yuklash'}</span>
+                      )}
+                    </div>
+                    <input type="file" accept="image/*" className="hidden" disabled={uploadingId === b._id} onChange={e => handleImageUpload(e, b._id)} />
+                  </label>
+                  {b.image && (
+                    <button onClick={() => updateBanner(b._id, 'image', '')} className="mt-1 text-xs text-red-500 hover:underline">Rasmni olib tashlash</button>
+                  )}
                 </div>
               </div>
             </div>

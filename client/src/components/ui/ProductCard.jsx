@@ -268,14 +268,21 @@ export function PromoCard({ promo, onClick }) {
       onClick={onClick}
       className="shrink-0 w-[260px] h-[140px] rounded-lg overflow-hidden relative cursor-pointer border border-white/5"
     >
-      <div className={cn('w-full h-full relative p-5 flex flex-col justify-center stripes', variants[promo.variant])}>
-        <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">{promo.tag}</div>
-        <div className="font-display text-2xl text-white leading-[1.05] whitespace-pre-line">{promo.title}</div>
-        <div className="text-[11px] text-white/55 font-medium mt-1.5">{promo.sub}</div>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[52px] drop-shadow-[0_4px_12px_rgba(0,0,0,.4)]">
-          {promo.emoji}
-        </div>
-      </div>
+      {promo.image ? (
+        <img src={promo.image} alt={promo.title || ''} className="absolute inset-0 w-full h-full object-cover" />
+      ) : (
+        <div className={cn('absolute inset-0 stripes', variants[promo.variant] || 'bg-red-gradient')} />
+      )}
+      {(promo.tag || promo.title || promo.sub) && (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-4">
+            {promo.tag && <div className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-0.5">{promo.tag}</div>}
+            {promo.title && <div className="font-display text-xl text-white leading-[1.05] whitespace-pre-line drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{promo.title}</div>}
+            {promo.sub && <div className="text-[11px] text-white/80 font-medium mt-0.5">{promo.sub}</div>}
+          </div>
+        </>
+      )}
     </motion.div>
   )
 }
