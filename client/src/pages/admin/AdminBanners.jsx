@@ -182,25 +182,7 @@ export default function AdminBanners() {
               </button>
             </div>
 
-            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Sarlavha</label>
-                  <input type="text" value={b.title || ''} onChange={e => updateBanner(b._id, 'title', e.target.value)}
-                    className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Tavsif</label>
-                  <input type="text" value={b.subtitle || ''} onChange={e => updateBanner(b._id, 'subtitle', e.target.value)}
-                    className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Teg (tag)</label>
-                  <input type="text" value={b.tag || ''} onChange={e => updateBanner(b._id, 'tag', e.target.value)}
-                    className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
-
+            <div className="p-4">
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -248,12 +230,6 @@ export default function AdminBanners() {
                     ) : (
                       <div className={`absolute inset-0 ${VARIANTS.find(v => v.value === (b.variant || 'red'))?.className || 'bg-red-600'}`} />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 p-3 text-white">
-                      {b.tag && <div className="text-[10px] uppercase tracking-wide opacity-80">{b.tag}</div>}
-                      <div className="text-sm font-bold leading-tight">{b.title || 'Sarlavha'}</div>
-                      {b.subtitle && <div className="text-xs opacity-90">{b.subtitle}</div>}
-                    </div>
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
                       {uploadingId === b._id ? (
                         <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
