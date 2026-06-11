@@ -35,6 +35,7 @@ function adaptProduct(p) {
     reviews: p.reviews || 12,
     desc: typeof p.description === 'string' ? p.description : (p.description?.uz || p.description?.ru || p.description?.en || ''),
     images: p.images || [],
+    unit: p.unit || 'pcs',
   }
 }
 

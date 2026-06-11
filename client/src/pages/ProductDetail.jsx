@@ -36,6 +36,7 @@ function adaptProduct(p) {
     reviews: p.reviews || 12,
     desc: typeof p.description === 'string' ? p.description : (p.description?.uz || p.description?.ru || p.description?.en || ''),
     images: p.images || [],
+    unit: p.unit || 'pcs',
   }
 }
 
@@ -147,6 +148,7 @@ export default function ProductDetail() {
 
         <div className="flex items-baseline gap-2 mb-5">
           <div className="font-display text-4xl text-ink tabular">{formatSum(product.price)}</div>
+          <span className="text-sm text-ink-dim font-medium">/ {product.unit === 'kg' ? 'kg' : 'dona'}</span>
           {product.old && (
             <div className="text-sm text-ink-dim line-through tabular">{formatSum(product.old)}</div>
           )}
