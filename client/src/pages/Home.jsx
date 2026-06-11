@@ -121,7 +121,7 @@ export default function Home() {
     let mounted = true
     Promise.all([
       categoriesAPI.getAll({ parent: 'null' }).then(r => r.data),
-      productsAPI.getAll({ limit: 20 }).then(r => r.data),
+      productsAPI.getAll({ limit: 50, active: 'true' }).then(r => r.data),
       bannersAPI.getAll().then(r => r.data).catch(() => []),
     ]).then(([catsRes, prodsRes, bannersRes]) => {
       if (!mounted) return

@@ -108,7 +108,7 @@ export default function Catalog() {
     let mounted = true
     Promise.all([
       categoriesAPI.getAll().then(r => r.data),
-      productsAPI.getAll({ limit: 200 }).then(r => r.data),
+      productsAPI.getAll({ limit: 1000, active: 'true' }).then(r => r.data),
     ]).then(([catsRes, prodsRes]) => {
       if (!mounted) return
       setCategories((Array.isArray(catsRes) ? catsRes : (catsRes.categories || [])).map(adaptCategory))
