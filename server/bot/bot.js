@@ -15,6 +15,14 @@ const { logger } = require('../config/logger');
 const { getPaymeLink, getClickLink } = require('../utils/paymentLinks');
 const notifications = require('../services/notifications');
 
+// Read an admin-editable text setting, falling back to a default
+async function getSettingText(key, fallback) {
+  try {
+    const s = await Settings.findOne({ key });
+    return (s && typeof s.value === 'string' && s.value.trim()) ? s.value : fallback;
+  } catch { return fallback; }
+}
+
 const STATES = {
   GREETING: 'greeting',
   PHONE: 'phone',
@@ -1469,28 +1477,24 @@ function createBot() {
 
     // ── USER MENU BUTTONS ─────────────────────────────────────────────────
     if (input === '🏢 Kompaniya haqida') {
+      const mapUrl = 'https://maps.app.goo.gl/y6AiKiycK2PvuinXA?g_st=ic';
+      const defaultAbout =
+        '🏢 *MeatZone haqida*\n\n' +
+        '📅 Tashkil etilgan: 2023-yil\n\n' +
+        '🎯 *Faoliyat:*\nPremium sifatli go\'sht va go\'sht mahsulotlari: mol, qo\'y, tovuq, kolbasa, tayyorlangan taomlar. Yetkazib berish Toshkent bo\'ylab.\n\n' +
+        '📞 *Aloqa:*\n📱 +998 90 123-45-67\n📧 info@meatzone.uz\n\n' +
+        '🕐 Ish vaqti: Dush–Yak 08:00 – 22:00\n\n' +
+        '🏠 *Manzil:*\nToshkent, Chilonzor tumani';
+      const aboutText = await getSettingText('bot_about', defaultAbout);
+      const kb = Markup.inlineKeyboard([
+        [Markup.button.url('📍 Xaritada ko\'rish', mapUrl)],
+        [Markup.button.url('🌐 Saytga o\'tish', SITE)],
+        [Markup.button.url('📩 Telegram kanal', 'https://t.me/meatzone_uz')],
+      ]);
       try {
-        const phones = '📱 +998 90 123-45-67';
-        const addr = 'Toshkent, Chilonzor tumani';
-        const mapUrl = 'https://maps.app.goo.gl/y6AiKiycK2PvuinXA?g_st=ic';
-        await ctx.reply(
-          '🏢 *MeatZone haqida*\n\n' +
-          '📅 Tashkil etilgan: 2023-yil\n\n' +
-          '🎯 *Faoliyat:*\nPremium sifatli go\'sht va go\'sht mahsulotlari: mol, qo\'y, tovuq, kolbasa, tayyorlangan taomlar. Yetkazib berish Toshkent bo\'ylab.\n\n' +
-          '📞 *Aloqa:*\n' + phones + '\n📧 info@meatzone.uz\n\n' +
-          '🕐 Ish vaqti: Dush–Yak 08:00 – 22:00\n\n' +
-          '🏠 *Manzil:*\n' + addr,
-          {
-            parse_mode: 'Markdown',
-            ...Markup.inlineKeyboard([
-              [Markup.button.url('📍 Xaritada ko\'rish', mapUrl)],
-              [Markup.button.url('🌐 Saytga o\'tish', SITE)],
-              [Markup.button.url('📩 Telegram kanal', 'https://t.me/meatzone_uz')],
-            ])
-          }
-        );
-      } catch (e) {
-        await ctx.reply('🏢 *MeatZone*\n\n📞 +998 90 123-45-67\n🌐 ' + SITE, { parse_mode: 'Markdown' });
+        await ctx.reply(aboutText, { parse_mode: 'Markdown', ...kb });
+      } catch {
+        await ctx.reply(aboutText, kb);
       }
       return;
     }
@@ -1564,20 +1568,20 @@ function createBot() {
     }
 
     if (input === '📞 Yordam') {
-      await ctx.reply(
+      const defaultHelp =
         '📞 *Yordam markazi*\n\n' +
         '❓ *Tez-tez beriladigan savollar:*\n\n' +
         '1️⃣ Qanday zakaz beraman?\n→ "🛒 Do\'konga o\'tish" tugmasini bosing\n\n' +
         '2️⃣ Zakazimni qanday kuzataman?\n→ "📜 Zakazlar tarixi" bo\'limida\n\n' +
         '3️⃣ Premium qanday olaman?\n→ "👑 Premium" bo\'limida\n\n' +
-        '💬 Boshqa savol bo\'lsa:\n📞 +998 90 123-45-67\n📧 info@meatzone.uz',
-        {
-          parse_mode: 'Markdown',
-          ...Markup.inlineKeyboard([
-            [Markup.button.url('🛒 Do\'konni ochish', SITE + '/catalog')],
-          ])
-        }
-      );
+        '💬 Boshqa savol bo\'lsa:\n📞 +998 90 123-45-67\n📧 info@meatzone.uz';
+      const helpText = await getSettingText('bot_help', defaultHelp);
+      const kb = Markup.inlineKeyboard([[Markup.button.url('🛒 Do\'konni ochish', SITE + '/catalog')]]);
+      try {
+        await ctx.reply(helpText, { parse_mode: 'Markdown', ...kb });
+      } catch {
+        await ctx.reply(helpText, kb);
+      }
       return;
     }
 
