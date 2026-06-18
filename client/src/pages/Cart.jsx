@@ -418,7 +418,7 @@ export default function Cart() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setQty(item.id, item.qty - (item.unit === 'kg' ? 100 : 1))}
+                    onClick={() => setQty(item.id, item.unit === 'kg' ? Math.max(500, item.qty - 100) : item.qty - 1)}
                     className="w-8 h-8 rounded-lg bg-bg-surface3 border border-ink-line text-ink tap flex items-center justify-center active:scale-95"
                   >
                     <Minus size={14} />

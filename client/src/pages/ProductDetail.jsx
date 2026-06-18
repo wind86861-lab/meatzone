@@ -166,7 +166,7 @@ export default function ProductDetail() {
               <span className="text-sm font-extrabold text-primary tabular">{qty >= 1000 ? `${(qty / 1000).toFixed(qty % 1000 === 0 ? 0 : 1)} kg` : `${qty} g`}</span>
             </div>
             <div className="flex gap-2 mb-3">
-              {[250, 500, 1000, 2000].map(g => (
+              {[500, 1000, 2000, 3000].map(g => (
                 <button key={g} onClick={() => setQty(g)}
                   className={cn('flex-1 py-2 rounded-md text-xs font-bold border tap transition-colors', qty === g ? 'bg-primary text-white border-primary' : 'bg-bg-surface3 text-ink-dim border-ink-line')}>
                   {g >= 1000 ? `${g / 1000} kg` : `${g} g`}
@@ -174,7 +174,7 @@ export default function ProductDetail() {
               ))}
             </div>
             <div className="flex items-center justify-center gap-4">
-              <button onClick={() => setQty(Math.max(100, qty - 100))}
+              <button onClick={() => setQty(Math.max(500, qty - 100))}
                 className="w-10 h-10 rounded-md bg-bg-surface3 border border-ink-line text-ink tap flex items-center justify-center"><Minus size={16} /></button>
               <span className="min-w-[90px] text-center font-bold text-lg tabular">{qty} g</span>
               <button onClick={() => setQty(qty + 100)}
