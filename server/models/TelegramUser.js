@@ -15,7 +15,7 @@ const telegramUserSchema = new mongoose.Schema({
     lng: { type: Number, default: null },
     address: { type: String, default: '' },
   },
-  role: { type: String, enum: ['admin', 'driver', 'customer'], default: 'customer' },
+  role: { type: String, enum: ['admin', 'manager', 'operator', 'driver', 'customer'], default: 'customer' },
   onboardingDone: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   isBanned: { type: Boolean, default: false },

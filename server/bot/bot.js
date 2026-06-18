@@ -1570,11 +1570,10 @@ function createBot() {
         '1️⃣ Qanday zakaz beraman?\n→ "🛒 Do\'konga o\'tish" tugmasini bosing\n\n' +
         '2️⃣ Zakazimni qanday kuzataman?\n→ "📜 Zakazlar tarixi" bo\'limida\n\n' +
         '3️⃣ Premium qanday olaman?\n→ "👑 Premium" bo\'limida\n\n' +
-        '💬 Boshqa savol bo\'lsa: 📞 +998 90 123-45-67',
+        '💬 Boshqa savol bo\'lsa:\n📞 +998 90 123-45-67\n📧 info@meatzone.uz',
         {
           parse_mode: 'Markdown',
           ...Markup.inlineKeyboard([
-            [Markup.button.url('📧 Email yuborish', 'mailto:info@meatzone.uz')],
             [Markup.button.url('🛒 Do\'konni ochish', SITE + '/catalog')],
           ])
         }
