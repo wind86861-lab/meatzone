@@ -60,6 +60,7 @@ export default function ProductDetail() {
       if (!mounted) return
       const p = adaptProduct(res.data)
       setProduct(p)
+      setQty(p.unit === 'kg' ? 1000 : 1) // kg → grams, pcs → pieces
       // Fetch related
       productsAPI.getAll({ limit: 16 }).then(r => {
         if (!mounted) return
@@ -158,24 +159,38 @@ export default function ProductDetail() {
         <p className="text-sm text-ink-dim leading-relaxed mb-6">{product.desc}</p>
 
         {/* Qty selector */}
-        <div className="flex items-center justify-between bg-bg-surface rounded-lg border border-ink-line p-3 mb-6">
-          <span className="text-sm font-bold text-ink">{t(lang, 'product.qty')}</span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setQty(Math.max(1, qty - 1))}
-              className="w-9 h-9 rounded-md bg-bg-surface3 border border-ink-line text-ink text-lg tap flex items-center justify-center"
-            >
-              <Minus size={16} />
-            </button>
-            <span className="min-w-[28px] text-center font-bold text-lg tabular">{qty}</span>
-            <button
-              onClick={() => setQty(qty + 1)}
-              className="w-9 h-9 rounded-md bg-bg-surface3 border border-ink-line text-ink text-lg tap flex items-center justify-center"
-            >
-              <Plus size={16} />
-            </button>
+        {product.unit === 'kg' ? (
+          <div className="bg-bg-surface rounded-lg border border-ink-line p-3 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold text-ink">{lang === 'ru' ? 'Количество (граммы)' : lang === 'en' ? 'Amount (grams)' : 'Miqdor (gramm)'}</span>
+              <span className="text-sm font-extrabold text-primary tabular">{qty >= 1000 ? `${(qty / 1000).toFixed(qty % 1000 === 0 ? 0 : 1)} kg` : `${qty} g`}</span>
+            </div>
+            <div className="flex gap-2 mb-3">
+              {[250, 500, 1000, 2000].map(g => (
+                <button key={g} onClick={() => setQty(g)}
+                  className={cn('flex-1 py-2 rounded-md text-xs font-bold border tap transition-colors', qty === g ? 'bg-primary text-white border-primary' : 'bg-bg-surface3 text-ink-dim border-ink-line')}>
+                  {g >= 1000 ? `${g / 1000} kg` : `${g} g`}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-center gap-4">
+              <button onClick={() => setQty(Math.max(100, qty - 100))}
+                className="w-10 h-10 rounded-md bg-bg-surface3 border border-ink-line text-ink tap flex items-center justify-center"><Minus size={16} /></button>
+              <span className="min-w-[90px] text-center font-bold text-lg tabular">{qty} g</span>
+              <button onClick={() => setQty(qty + 100)}
+                className="w-10 h-10 rounded-md bg-bg-surface3 border border-ink-line text-ink tap flex items-center justify-center"><Plus size={16} /></button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between bg-bg-surface rounded-lg border border-ink-line p-3 mb-6">
+            <span className="text-sm font-bold text-ink">{t(lang, 'product.qty')}</span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-9 h-9 rounded-md bg-bg-surface3 border border-ink-line text-ink text-lg tap flex items-center justify-center"><Minus size={16} /></button>
+              <span className="min-w-[28px] text-center font-bold text-lg tabular">{qty}</span>
+              <button onClick={() => setQty(qty + 1)} className="w-9 h-9 rounded-md bg-bg-surface3 border border-ink-line text-ink text-lg tap flex items-center justify-center"><Plus size={16} /></button>
+            </div>
+          </div>
+        )}
 
         {/* Related */}
         {related.length > 0 && (
@@ -209,7 +224,7 @@ export default function ProductDetail() {
         <div className="max-w-[480px] mx-auto flex items-center gap-3">
           <div className="flex-1">
             <div className="text-[11px] text-ink-dim">{t(lang, 'product.total')}</div>
-            <div className="font-display text-2xl text-ink tabular">{formatSum(product.price * qty)}</div>
+            <div className="font-display text-2xl text-ink tabular">{formatSum(product.unit === 'kg' ? Math.round(product.price * qty / 1000) : product.price * qty)}</div>
           </div>
           <Button variant="primary" size="lg" className="flex-[1.5] gap-2" onClick={handleAdd}>
             <ShoppingCart size={18} />

@@ -30,6 +30,12 @@ const orderItemSchema = new mongoose.Schema({
     required: true,
     min: 1,
   },
+  // 'kg' → quantity is grams; 'pcs' → quantity is a piece count
+  unit: {
+    type: String,
+    enum: ['kg', 'pcs'],
+    default: 'pcs',
+  },
   image: {
     type: String,
     default: '',

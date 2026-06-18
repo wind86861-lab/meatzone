@@ -9,7 +9,7 @@ const PaymeError = {
   InvalidAmount: -31001,
   OrderNotFound: -31050,
   CantPerform: -31008,
-  TransactionNotFound: -31003,
+  TransactionNotFound: -31003, z
   AlreadyDone: -31060,
   Pending: -31050,
   InvalidAuth: -32504,

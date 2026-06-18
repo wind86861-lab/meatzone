@@ -97,6 +97,10 @@ router.post('/create', submitLimiter, async (req, res) => {
       }
 
       const price = product.finalPrice || product.price;
+      // kg products send quantity in grams → line total = price per kg * grams / 1000
+      const lineTotal = product.unit === 'kg'
+        ? Math.round((price * item.quantity) / 1000)
+        : price * item.quantity;
 
       orderItems.push({
         productId: product._id,
@@ -104,10 +108,11 @@ router.post('/create', submitLimiter, async (req, res) => {
         price: price,
         originalPrice: product.price,
         quantity: item.quantity,
+        unit: product.unit || 'pcs',
         image: product.images[0] || '',
       });
 
-      subTotal += price * item.quantity;
+      subTotal += lineTotal;
     }
 
     // ── Delivery fee from settings ───────────────────────────────────────────

@@ -16,7 +16,7 @@ const TAB_KEYS = [
 export default function BottomNav() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const count = useCart((s) => s.items.reduce((a, i) => a + i.qty, 0))
+  const count = useCart((s) => s.items.reduce((a, i) => a + (i.unit === 'kg' ? 1 : i.qty), 0))
   const { lang } = useLangStore()
 
   return (

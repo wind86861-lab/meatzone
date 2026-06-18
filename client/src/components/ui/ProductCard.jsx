@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from './index'
 import { useCart } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
-import { formatPrice, haptic, cn } from '../../utils/format'
+import { formatPrice, haptic, cn, qtyLabel } from '../../utils/format'
 
 /* Hook: returns qty in cart for a given product id */
 function useCartQty(id) {
@@ -68,7 +68,7 @@ export function ProductCardH({ product, onClick }) {
             </div>
           </div>
 
-          <AddButton qty={qty} onClick={handleAdd} compact />
+          <AddButton qty={qty} label={qtyLabel(product.unit, qty)} onClick={handleAdd} compact />
         </div>
       </div>
     </motion.div>
@@ -154,7 +154,7 @@ export function ProductCardV({ product, onClick }) {
                 className="flex items-center gap-0.5 text-[13px] font-extrabold tabular"
               >
                 <Check size={12} strokeWidth={3} />
-                {qty}
+                {qtyLabel(product.unit, qty)}
               </motion.div>
             ) : (
               <motion.div
@@ -198,7 +198,7 @@ export function ProductCardV({ product, onClick }) {
 }
 
 /* ─────────── Reusable add button (compact pill) ─────────── */
-function AddButton({ qty, onClick, compact }) {
+function AddButton({ qty, label, onClick, compact }) {
   if (qty > 0) {
     return (
       <button
@@ -209,7 +209,7 @@ function AddButton({ qty, onClick, compact }) {
         )}
       >
         <Check size={compact ? 12 : 14} strokeWidth={3} />
-        {qty}
+        {label ?? qty}
       </button>
     )
   }

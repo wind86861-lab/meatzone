@@ -10,7 +10,7 @@ import { useCart } from '../store/cartStore'
 import { useLangStore } from '../store/langStore'
 import { useAuthStore } from '../store/authStore'
 import { t } from '../utils/i18n'
-import { formatSum, haptic, cn } from '../utils/format'
+import { formatSum, haptic, cn, lineTotal, qtyLabel } from '../utils/format'
 import { ordersAPI, promosAPI, deliveryAPI } from '../services/api'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -413,19 +413,19 @@ export default function Cart() {
                 <div className="text-3xl">{item.emoji}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-ink truncate">{item.name}</div>
-                  <div className="text-[11px] text-ink-dim">{item.meta}</div>
-                  <div className="text-sm font-bold text-ink tabular mt-1">{formatSum(item.price)}</div>
+                  <div className="text-[11px] text-ink-dim">{formatSum(item.price)} / {item.unit === 'kg' ? 'kg' : 'dona'}</div>
+                  <div className="text-sm font-bold text-ink tabular mt-1">{formatSum(lineTotal(item))}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setQty(item.id, item.qty - 1)}
+                    onClick={() => setQty(item.id, item.qty - (item.unit === 'kg' ? 100 : 1))}
                     className="w-8 h-8 rounded-lg bg-bg-surface3 border border-ink-line text-ink tap flex items-center justify-center active:scale-95"
                   >
                     <Minus size={14} />
                   </button>
-                  <span className="min-w-[24px] text-center font-bold text-sm tabular">{item.qty}</span>
+                  <span className="min-w-[44px] text-center font-bold text-sm tabular">{qtyLabel(item.unit, item.qty)}</span>
                   <button
-                    onClick={() => setQty(item.id, item.qty + 1)}
+                    onClick={() => setQty(item.id, item.qty + (item.unit === 'kg' ? 100 : 1))}
                     className="w-8 h-8 rounded-lg bg-bg-surface3 border border-ink-line text-ink tap flex items-center justify-center active:scale-95"
                   >
                     <Plus size={14} />
