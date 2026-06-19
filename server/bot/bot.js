@@ -407,20 +407,30 @@ function createBot() {
   });
 
   // ── Onboarding lang actions ───────────────────────────────────────────────
+  // Skip the name step — use the Telegram username (fallback to first name), go straight to phone
+  const finishLangAndAskPhone = async (ctx, langCode) => {
+    const s = await botState.getState(ctx.from.id);
+    const name = ctx.from.username || ctx.from.first_name || 'Foydalanuvchi';
+    if (ctx.tgUser) {
+      ctx.tgUser.languageCode = langCode;
+      if (!ctx.tgUser.firstName) ctx.tgUser.firstName = name;
+      await ctx.tgUser.save();
+    }
+    await botState.setState(ctx.from.id, { ...(s || {}), state: STATES.ONBOARD_PHONE, name });
+    await ctx.reply(_t(ctx, 'onboardSharePhone'), {
+      parse_mode: 'Markdown',
+      ...Markup.keyboard([[Markup.button.contactRequest(_t(ctx, 'onboardPhoneBtn'))]]).oneTime().resize()
+    });
+  };
+
   bot.action('onb_lang_uz', async (ctx) => {
     await ctx.answerCbQuery();
-    const s = await botState.getState(ctx.from.id);
-    if (ctx.tgUser) { ctx.tgUser.languageCode = 'uz'; await ctx.tgUser.save(); }
-    await botState.setState(ctx.from.id, { ...(s || {}), state: STATES.ONBOARD_NAME });
-    await ctx.reply(_t(ctx, 'onboardEnterName'), { parse_mode: 'Markdown', ...Markup.removeKeyboard() });
+    await finishLangAndAskPhone(ctx, 'uz');
   });
 
   bot.action('onb_lang_ru', async (ctx) => {
     await ctx.answerCbQuery();
-    const s = await botState.getState(ctx.from.id);
-    if (ctx.tgUser) { ctx.tgUser.languageCode = 'ru'; await ctx.tgUser.save(); }
-    await botState.setState(ctx.from.id, { ...(s || {}), state: STATES.ONBOARD_NAME });
-    await ctx.reply(_t(ctx, 'onboardEnterName'), { parse_mode: 'Markdown', ...Markup.removeKeyboard() });
+    await finishLangAndAskPhone(ctx, 'ru');
   });
 
   // ── menu command — show main menu based on role
