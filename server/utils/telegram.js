@@ -1,15 +1,16 @@
 const https = require('https');
 
-const sendTelegramMessage = async (text) => {
+const sendTelegramMessage = async (text, chatId) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const dest = chatId || process.env.TELEGRAM_CHAT_ID;
 
-  if (!token || !chatId) return;
+  if (!token || !dest) return;
 
   const body = JSON.stringify({
-    chat_id: chatId,
+    chat_id: dest,
     text,
     parse_mode: 'HTML',
+    disable_web_page_preview: true,
   });
 
   return new Promise((resolve) => {
@@ -94,4 +95,38 @@ const formatOrderMessage = (order) => {
   return lines.join('\n');
 };
 
-module.exports = { sendTelegramMessage, formatRequestMessage, formatOrderMessage };
+// Full order card for the admin/orders group (includes items, address, map, payment)
+const formatFullOrderMessage = (order, items) => {
+  const payLabels = { cash: '💵 Naqd', click: '🔵 Click', payme: '🟢 Payme' };
+  const lines = [
+    `🛒 <b>Yangi buyurtma!</b>`,
+    ``,
+    `👤 <b>${order.customerName || '—'}</b>`,
+    `📞 ${order.customerPhone || '—'}`,
+  ];
+  const addr = [order.address, order.district].filter(Boolean).join(', ');
+  if (addr) lines.push(`🏠 ${addr}`);
+  if (order.latitude && order.longitude) {
+    lines.push(`🗺 <a href="https://maps.google.com/?q=${order.latitude},${order.longitude}">Xaritada ko'rish</a>`);
+  }
+  lines.push(``, `🧾 <b>Mahsulotlar:</b>`);
+  (items || []).forEach((it, i) => {
+    const isKg = it.unit === 'kg';
+    const qtyStr = isKg
+      ? (it.quantity >= 1000 ? (it.quantity / 1000) + ' kg' : it.quantity + ' g')
+      : it.quantity + ' dona';
+    const lineSum = isKg ? Math.round((it.price * it.quantity) / 1000) : it.price * it.quantity;
+    lines.push(`  ${i + 1}. ${it.name} — ${qtyStr} = <b>${lineSum.toLocaleString('ru-RU')} so'm</b>`);
+  });
+  lines.push(``);
+  if (order.subTotal) lines.push(`🧮 Mahsulotlar: ${order.subTotal.toLocaleString('ru-RU')} so'm`);
+  if (order.deliveryFee) lines.push(`🚚 Yetkazib berish: ${order.deliveryFee.toLocaleString('ru-RU')} so'm`);
+  lines.push(`💰 <b>Jami: ${(order.totalPrice || 0).toLocaleString('ru-RU')} so'm</b>`);
+  lines.push(`💳 To'lov: <b>${payLabels[order.paymentMethod] || order.paymentMethod || '—'}</b>`);
+  if (order.comment) lines.push(`💬 ${order.comment}`);
+  lines.push(``, `🆔 <code>${order._id}</code>`);
+  lines.push(`🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}`);
+  return lines.join('\n');
+};
+
+module.exports = { sendTelegramMessage, formatRequestMessage, formatOrderMessage, formatFullOrderMessage };

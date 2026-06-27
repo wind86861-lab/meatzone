@@ -11,7 +11,7 @@ const { getDeliverySettings, haversine, getRoadDistance } = require('./delivery'
 const Coin = require('../models/Coin');
 const Promo = require('../models/Promo');
 const { botState } = require('../config/redis');
-const { sendTelegramMessage, formatOrderMessage } = require('../utils/telegram');
+const { sendTelegramMessage, formatOrderMessage, formatFullOrderMessage } = require('../utils/telegram');
 const { sendMessage: notifyTelegramUser } = require('../services/notifications');
 const { getPaymeLink, getClickLink } = require('../utils/paymentLinks');
 
@@ -247,8 +247,8 @@ router.post('/create', submitLimiter, async (req, res) => {
       },
     });
 
-    // Send notification
-    sendTelegramMessage(formatOrderMessage(order)).catch((err) => {
+    // Send full order details to the admin orders group
+    sendTelegramMessage(formatFullOrderMessage(order, savedItems), process.env.TELEGRAM_ORDER_GROUP).catch((err) => {
       console.error('Telegram notification error:', err.message);
     });
 
