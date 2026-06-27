@@ -19,6 +19,8 @@ const sendTelegramMessage = async (text, chatId) => {
         hostname: 'api.telegram.org',
         path: `/bot${token}/sendMessage`,
         method: 'POST',
+        family: 4,          // server IPv6 is unreachable — force IPv4
+        timeout: 15000,
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(body),
@@ -29,6 +31,7 @@ const sendTelegramMessage = async (text, chatId) => {
         res.on('end', resolve);
       }
     );
+    req.on('timeout', () => { req.destroy(); resolve(); });
     req.on('error', (err) => {
       console.error('Telegram notification error:', err.message);
       resolve();
